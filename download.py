@@ -6,12 +6,12 @@ import zipfile
 
 
 class Download:
-    def __init__(self, name, url, extract_path, branch):
+    def __init__(self, name, url, extract_path, download_dir, branch):
         self.name = name
         self.url = url
         self.branch = branch
 
-        self.download_path = "downloads/"
+        self.download_path = download_dir + "/"
         self.download_path += self.name + "-" + self.branch + ".zip"
 
         self.extract_path_prefix = extract_path + "/"
