@@ -272,7 +272,7 @@ class Projects:
             None,
             False))
         self.projects.append(libgit2Project(config.downloads_dir, config.build_dir, target))
-        self.projects.append(Project(
+        self._add_ishiko_project(
             "Ishiko/Platform",
             "ishiko-cpp_platform",
             "main",
@@ -280,8 +280,8 @@ class Projects:
             config.build_dir,
             "ISHIKO_CPP",
             None,
-            False))
-        self.projects.append(Project(
+            False)
+        self._add_ishiko_project(
             "Ishiko/Errors",
             "ishiko-cpp_errors",
             "main",
@@ -289,8 +289,8 @@ class Projects:
             config.build_dir,
             "ISHIKO_CPP",
             "Makefiles/$(compiler_short_name)/IshikoErrors.sln",
-            False))
-        self.projects.append(Project(
+            False)
+        self._add_ishiko_project(
             "Ishiko/Types",
             "ishiko-cpp_types",
             "main",
@@ -298,8 +298,8 @@ class Projects:
             config.build_dir,
             "ISHIKO_CPP",
             "Makefiles/$(compiler_short_name)/IshikoTypes.sln",
-            False))
-        self.projects.append(Project(
+            False)
+        self._add_ishiko_project(
             "Ishiko/Process",
             "ishiko-cpp_process",
             "main",
@@ -307,8 +307,8 @@ class Projects:
             config.build_dir,
             "ISHIKO_CPP",
             "Makefiles/$(compiler_short_name)/IshikoProcess.sln",
-            False))
-        self.projects.append(Project(
+            False)
+        self._add_ishiko_project(
             "Ishiko/Collections",
             "ishiko-cpp_collections",
             "main",
@@ -316,8 +316,8 @@ class Projects:
             config.build_dir,
             "ISHIKO_CPP",
             "Makefiles/$(compiler_short_name)/IshikoCollections.sln",
-            False))
-        self.projects.append(Project(
+            False)
+        self._add_ishiko_project(
             "Ishiko/FileSystem",
             "ishiko-cpp_filesystem",
             "main",
@@ -325,8 +325,8 @@ class Projects:
             config.build_dir,
             "ISHIKO_CPP",
             "Makefiles/$(compiler_short_name)/IshikoFileSystem.sln",
-            False))
-        self.projects.append(Project(
+            False)
+        self._add_ishiko_project(
             "Ishiko/Terminal",
             "ishiko-cpp_terminal",
             "main",
@@ -334,8 +334,8 @@ class Projects:
             config.build_dir,
             "ISHIKO_CPP",
             "Makefiles/$(compiler_short_name)/IshikoTerminal.sln",
-            False))
-        self.projects.append(Project(
+            False)
+        self._add_ishiko_project(
             "Ishiko/Tasks",
             "ishiko-cpp_tasks",
             "main",
@@ -343,7 +343,7 @@ class Projects:
             config.build_dir,
             "ISHIKO_CPP",
             "Makefiles/$(compiler_short_name)/IshikoTasks.sln",
-            False))
+            False)
         self.projects.append(Project(
             "DiplodocusDB/Core",
             "TODO_REPOSITORY",
@@ -407,7 +407,7 @@ class Projects:
             "CODESMITHYIDE",
             "Makefiles/$(compiler_short_name)/CodeSmithyCLI.sln",
             False))
-        self.projects.append(Project(
+        self._add_ishiko_project(
             "Ishiko/TestFramework/Core",
             "TODO_REPOSITORY",
             "main",
@@ -415,8 +415,8 @@ class Projects:
             config.build_dir,
             "ISHIKO_CPP",
             "Makefiles/$(compiler_short_name)/IshikoTestFrameworkCore.sln",
-            True))
-        self.projects.append(Project(
+            True)
+        self._add_ishiko_project(
             "Ishiko/WindowsRegistry",
             "ishiko-cpp_windowsregistry",
             "main",
@@ -424,8 +424,8 @@ class Projects:
             config.build_dir,
             "ISHIKO_CPP",
             "Makefiles/$(compiler_short_name)/IshikoWindowsRegistry.sln",
-            True))
-        self.projects.append(Project(
+            True)
+        self._add_ishiko_project(
             "Ishiko/FileTypes",
             "ishiko-cpp_filetypes",
             "main",
@@ -433,7 +433,7 @@ class Projects:
             config.build_dir,
             "ISHIKO_CPP",
             "Makefiles/$(compiler_short_name)/IshikoFileTypes.sln",
-            True))
+            True)
         self.projects.append(Project(
             "CodeSmithyIDE/CodeSmithy/UICore",
             "TODO_REPOSITORY",
@@ -572,6 +572,19 @@ class Projects:
                     self.get(test.project_name).launch(compiler,
                                                        architecture_dir_name)
                 raise RuntimeError(test.project_name + " tests failed.")
+
+    def _add_ishiko_project(self,
+                            name: str,
+                            repository: str,
+                            branch: str,
+                            download_path: str,
+                            install_path: str,
+                            env_var_name: str,
+                            makefile_path: Optional[str],
+                            use_codesmithy_make: bool):
+        self.projects.append(Project(name, repository, branch, download_path,
+                                     install_path, env_var_name, makefile_path,
+                                     use_codesmithy_make))
 
     def _init_downloader(self):
         for project in self.projects:
