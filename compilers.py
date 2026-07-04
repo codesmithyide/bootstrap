@@ -39,7 +39,12 @@ class VisualStudio(Compiler):
             cmake_generator = "Visual Studio 14 2015"
         elif short_name == "VC15":
             cmake_generator = "Visual Studio 15 2017"
-        if architecture == "64":
+        elif short_name == "VC18":
+            cmake_generator = "Visual Studio 18 2026"
+        # The " Win64" generator suffix only exists for VS2017 and earlier.
+        # VS2019+ (e.g. VC18) select the architecture with the "-A" argument
+        # and otherwise default to the host platform.
+        if architecture == "64" and short_name in ("VC14", "VC15"):
             cmake_generator += " Win64"
         super().__init__(name, short_name, executable, cmake_generator)
 
@@ -60,6 +65,9 @@ class Compilers:
     def __init__(self, target):
         self.architecture = target.architecture
         self.compilers = []
+        foundMSVC2026 = os.path.isfile("C:/Program Files/Microsoft Visual Studio/18/Community/Common7/IDE/devenv.exe")
+        if foundMSVC2026:
+            self.compilers.append(VisualStudio("Visual Studio 2026", "VC18", "C:/Program Files/Microsoft Visual Studio/18/Community/Common7/IDE/devenv.exe", self.architecture))
         foundMSVC2017 = os.path.isfile("C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/Common7/IDE/devenv.exe")
         if foundMSVC2017:
             self.compilers.append(VisualStudio("Visual Studio 2017", "VC15", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/Common7/IDE/devenv.exe", self.architecture))

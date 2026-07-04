@@ -14,6 +14,7 @@ class Project:
     """Represents a project that can be downloaded and optionally built."""
 
     def __init__(self,
+                 config,
                  name: str,
                  env_var: str,
                  makefile_path: Optional[str],
@@ -21,6 +22,8 @@ class Project:
         """
         Parameters
         ----------
+        config : Config
+            The bootstrap configuration (directory layout, etc.).
         name : str
             The name of the project. The location of the package to download is
             derived from the name.
@@ -35,12 +38,14 @@ class Project:
             Whether CodeSmithyMake should be used to build the project.
         """
 
+        self.config = config
         self.name = name
         self.env_var = env_var
         if makefile_path is None:
             self.makefile_path = None
         else:
-            self.makefile_path = "Build/" + name + "/" + makefile_path
+            self.makefile_path = config.build_dir + "/" + name + "/" + \
+                                 makefile_path
         self.use_codesmithy_make = use_codesmithy_make
         self.cmake_generation_args = []
 
@@ -71,13 +76,16 @@ class Project:
         download = None
         if len(split_name) == 1:
             download_url = "https://github.com/CodeSmithyIDE/" + \
-                           split_name[0] + "/archive/master.zip"
-            download = Download(split_name[0], download_url, "Build")
+                           split_name[0] + "/archive/main.zip"
+            download = Download(split_name[0], download_url,
+                                self.config.build_dir,
+                                self.config.downloads_dir)
         else:
             download_url = "https://github.com/CodeSmithyIDE/" + \
-                           split_name[1] + "/archive/master.zip"
+                           split_name[1] + "/archive/main.zip"
             download = Download(split_name[1], download_url,
-                                "Build/" + split_name[0])
+                                self.config.build_dir + "/" + split_name[0],
+                                self.config.downloads_dir)
         downloader.downloads.append(download)
 
         return downloader
@@ -173,8 +181,9 @@ class Project:
 
 
 class libgit2Project(Project):
-    def __init__(self, target):
-        super().__init__("libgit2", "LIBGIT2", "$(arch)/CMakeLists.txt", False)
+    def __init__(self, config, target):
+        super().__init__(config, "libgit2", "LIBGIT2",
+                         "$(arch)/CMakeLists.txt", False)
         self.target = target
         self.cmake_generation_args = ["-DBUILD_SHARED_LIBS=OFF",
                                       "-DSTATIC_CRT=OFF"]
@@ -183,13 +192,14 @@ class libgit2Project(Project):
         if self.target.platform == "Linux":
             super().unzip(downloader)
         else:
-            Path("Build/libgit2").mkdir(exist_ok=True)
+            libgit2_dir = self.config.build_dir + "/libgit2"
+            Path(libgit2_dir).mkdir(exist_ok=True)
             downloader.unzip("libgit2",
-                             ["Build/libgit2/Win32", "Build/libgit2/x64"])
+                             [libgit2_dir + "/Win32", libgit2_dir + "/x64"])
 
 class wxWidgetsProject(Project):
-    def __init__(self):
-        super().__init__("wxWidgets", "WXWIN",
+    def __init__(self, config):
+        super().__init__(config, "wxWidgets", "WXWIN",
                          "build/msw/wx_$(compiler_short_name).sln", False)
 
     def create_downloader(self):
@@ -200,25 +210,26 @@ class wxWidgetsProject(Project):
         for module in modules:
             downloader.downloads.append(
                 Download(module, url_prefix + module + url_suffix,
-                         "Build/wxWidgets/src", "wx"))
+                         self.config.build_dir + "/wxWidgets/src",
+                         self.config.downloads_dir, "wx"))
         return downloader
 
     def unzip(self, downloader):
         super().unzip(downloader)
+        src = self.config.build_dir + "/wxWidgets/src"
         downloader.unzip("zlib")
         downloader.unzip("libpng")
-        os.rmdir("Build/wxWidgets/src/png")
-        os.rename("Build/wxWidgets/src/libpng", "Build/wxWidgets/src/png")
+        os.rmdir(src + "/png")
+        os.rename(src + "/libpng", src + "/png")
         downloader.unzip("libexpat")
-        os.rmdir("Build/wxWidgets/src/expat")
-        os.rename("Build/wxWidgets/src/libexpat", "Build/wxWidgets/src/expat")
+        os.rmdir(src + "/expat")
+        os.rename(src + "/libexpat", src + "/expat")
         downloader.unzip("libjpeg-turbo")
-        os.rmdir("Build/wxWidgets/src/jpeg")
-        os.rename("Build/wxWidgets/src/libjpeg-turbo",
-                  "Build/wxWidgets/src/jpeg")
+        os.rmdir(src + "/jpeg")
+        os.rename(src + "/libjpeg-turbo", src + "/jpeg")
         downloader.unzip("libtiff")
-        os.rmdir("Build/wxWidgets/src/tiff")
-        os.rename("Build/wxWidgets/src/libtiff", "Build/wxWidgets/src/tiff")
+        os.rmdir(src + "/tiff")
+        os.rename(src + "/libtiff", src + "/tiff")
 
     def _resolve_makefile_path(self, compiler, architecture_dir_name):
         return re.sub(r"\$\(compiler_short_name\)",
@@ -233,137 +244,164 @@ class Test:
 
 
 class Projects:
-    def __init__(self, target):
+    def __init__(self, target, config):
+        self.config = config
         self.downloader = Downloader()
         self.projects = []
         self.projects.append(Project(
+            config,
             "pugixml",
             "PUGIXML",
             None,
             False))
-        self.projects.append(libgit2Project(target))
+        self.projects.append(libgit2Project(config, target))
         self.projects.append(Project(
+            config,
             "Ishiko/Platform",
             "ISHIKO_CPP",
             None,
             False))
         self.projects.append(Project(
+            config,
             "Ishiko/Errors",
             "ISHIKO_CPP",
             "Makefiles/$(compiler_short_name)/IshikoErrors.sln",
             False))
         self.projects.append(Project(
+            config,
             "Ishiko/Types",
             "ISHIKO_CPP",
             "Makefiles/$(compiler_short_name)/IshikoTypes.sln",
             False))
         self.projects.append(Project(
+            config,
             "Ishiko/Process",
             "ISHIKO_CPP",
             "Makefiles/$(compiler_short_name)/IshikoProcess.sln",
             False))
         self.projects.append(Project(
+            config,
             "Ishiko/Collections",
             "ISHIKO_CPP",
             "Makefiles/$(compiler_short_name)/IshikoCollections.sln",
             False))
         self.projects.append(Project(
+            config,
             "Ishiko/FileSystem",
             "ISHIKO_CPP",
             "Makefiles/$(compiler_short_name)/IshikoFileSystem.sln",
             False))
         self.projects.append(Project(
+            config,
             "Ishiko/Terminal",
             "ISHIKO_CPP",
             "Makefiles/$(compiler_short_name)/IshikoTerminal.sln",
             False))
         self.projects.append(Project(
+            config,
             "Ishiko/Tasks",
             "ISHIKO_CPP",
             "Makefiles/$(compiler_short_name)/IshikoTasks.sln",
             False))
         self.projects.append(Project(
+            config,
             "DiplodocusDB/Core",
             "DIPLODOCUSDB",
             "Makefiles/$(compiler_short_name)/DiplodocusDBCore.sln",
             False))
         self.projects.append(Project(
+            config,
             "DiplodocusDB/TreeDB/Core",
             "DIPLODOCUSDB",
             "Makefiles/$(compiler_short_name)/DiplodocusTreeDBCore.sln",
             False))
         self.projects.append(Project(
+            config,
             "DiplodocusDB/TreeDB/XMLTreeDB",
             "DIPLODOCUSDB",
             "Makefiles/$(compiler_short_name)/DiplodocusXMLTreeDB.sln",
             False))
         self.projects.append(Project(
+            config,
             "CodeSmithyIDE/VersionControl/Git",
             "CODESMITHYIDE",
             "Makefiles/$(compiler_short_name)/CodeSmithyGit.sln",
             False))
         self.projects.append(Project(
+            config,
             "CodeSmithyIDE/BuildToolchains",
             "CODESMITHYIDE",
             "Makefiles/$(compiler_short_name)/CodeSmithyBuildToolchains.sln",
             False))
         self.projects.append(Project(
+            config,
             "CodeSmithyIDE/CodeSmithy/Core",
             "CODESMITHYIDE",
             "Makefiles/$(compiler_short_name)/CodeSmithyCore.sln",
             False))
         self.projects.append(Project(
+            config,
             "CodeSmithyIDE/CodeSmithy/CLI",
             "CODESMITHYIDE",
             "Makefiles/$(compiler_short_name)/CodeSmithyCLI.sln",
             False))
         self.projects.append(Project(
+            config,
             "Ishiko/TestFramework/Core",
             "ISHIKO_CPP",
             "Makefiles/$(compiler_short_name)/IshikoTestFrameworkCore.sln",
             True))
         self.projects.append(Project(
+            config,
             "Ishiko/WindowsRegistry",
             "ISHIKO_CPP",
             "Makefiles/$(compiler_short_name)/IshikoWindowsRegistry.sln",
             True))
         self.projects.append(Project(
+            config,
             "Ishiko/FileTypes",
             "ISHIKO_CPP",
             "Makefiles/$(compiler_short_name)/IshikoFileTypes.sln",
             True))
         self.projects.append(Project(
+            config,
             "CodeSmithyIDE/CodeSmithy/UICore",
             "CODESMITHYIDE",
             "Makefiles/$(compiler_short_name)/CodeSmithyUICore.sln",
             True))
-        self.projects.append(wxWidgetsProject())
+        self.projects.append(wxWidgetsProject(config))
         self.projects.append(Project(
+            config,
             "CodeSmithyIDE/CodeSmithy/UIElements",
             "CODESMITHYIDE",
             "Makefiles/$(compiler_short_name)/CodeSmithyUIElements.sln",
             True))
         self.projects.append(Project(
+            config,
             "CodeSmithyIDE/CodeSmithy/UIImplementation",
             "CODESMITHYIDE",
             "Makefiles/$(compiler_short_name)/CodeSmithyUIImplementation.sln",
             True))
         self.projects.append(Project(
+            config,
             "CodeSmithyIDE/CodeSmithy/UI",
             "CODESMITHYIDE",
             "Makefiles/$(compiler_short_name)/CodeSmithy.sln",
             True))
         self.projects.append(Project(
+            config,
             "CodeSmithyIDE/CodeSmithy/Tests/Core",
             "CODESMITHYIDE",
             "Makefiles/$(compiler_short_name)/CodeSmithyCoreTests.sln",
             True))
         self.projects.append(Project(
+            config,
             "CodeSmithyIDE/CodeSmithy/Tests/Make",
             "CODESMITHYIDE",
             "Makefiles/$(compiler_short_name)/CodeSmithyMakeTests.sln",
             True))
         self.projects.append(Project(
+            config,
             "CodeSmithyIDE/CodeSmithy/Tests/UICore",
             "CODESMITHYIDE",
             "Makefiles/$(compiler_short_name)/CodeSmithyUICoreTests.sln",
@@ -384,7 +422,8 @@ class Projects:
         output.print_step_title("Setting environment variables")
         env = {}
         for project in self.projects:
-            value = os.getcwd() + "/Build/" + project.name.split("/")[0]
+            value = os.getcwd() + "/" + self.config.build_dir + "/" + \
+                    project.name.split("/")[0]
             if project.env_var in env:
                 old_value = env[project.env_var]
                 if (old_value != value):
@@ -430,7 +469,7 @@ class Projects:
     def test(self, compiler, architecture_dir_name, input):
         for test in self.tests:
             # TODO
-            executable_path = "Build/" + test.project_name + \
+            executable_path = self.config.build_dir + "/" + test.project_name + \
                               "/Makefiles/VC15/x64/Debug/" + test.executable
             try:
                 subprocess.check_call([executable_path])

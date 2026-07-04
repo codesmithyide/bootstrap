@@ -14,8 +14,9 @@ from build import BuildConfiguration
 class CMake:
     """Wrapper used to invoke CMake."""
 
-    def __init__(self, generator):
+    def __init__(self, generator, config):
         self.generator = generator
+        self.config = config
 
     def install(self, target: Target, state: State, output: Output):
         """Installs CMake.
@@ -86,20 +87,21 @@ class CMake:
                 architecture_string = "-win32-x86"
             source_path = "CMake/cmake-3.12.3" + architecture_string + ".zip"
             zip_ref = zipfile.ZipFile(source_path, "r")
-            self.path = "Build/cmake-3.12.3" + architecture_string + \
-                        "/bin/cmake.exe"
+            self.path = self.config.build_dir + "/cmake-3.12.3" + \
+                        architecture_string + "/bin/cmake.exe"
 
             # TODO : the path we delete here doesn't seem right
             shutil.rmtree(self.path, ignore_errors=True)
-            zip_ref.extractall("Build")
+            zip_ref.extractall(self.config.build_dir)
             zip_ref.close()
         elif target.platform == "Linux":
-            download_url = "https://github.com/CodeSmithyIDE/CMake/archive/master.zip"
-            download = Download("CMake", download_url, "Build")
+            download_url = "https://github.com/CodeSmithyIDE/CMake/archive/main.zip"
+            download = Download("CMake", download_url, self.config.build_dir,
+                                self.config.downloads_dir)
             download.download(None)
             download.unzip()
             previous_working_dir = os.getcwd()
-            os.chdir("Build/CMake")
+            os.chdir(self.config.build_dir + "/CMake")
             try:
                 try:
                     subprocess.check_call(["chmod", "0774", "bootstrap"])
@@ -110,7 +112,7 @@ class CMake:
                 except subprocess.CalledProcessError:
                     raise RuntimeError("./bootstrap failed.")
                 GNUmake().compile("Makefile", None, None)
-                self.path = "Build/CMake/bin/cmake"
+                self.path = self.config.build_dir + "/CMake/bin/cmake"
             finally:
                 os.chdir(previous_working_dir)
         else:
