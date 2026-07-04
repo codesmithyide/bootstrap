@@ -470,7 +470,7 @@ class Projects:
         for test in self.tests:
             # TODO
             executable_path = self.config.build_dir + "/" + test.project_name + \
-                              "/Makefiles/VC15/x64/Debug/" + test.executable
+                              "/Makefiles/vc15/x64/Debug/" + test.executable
             try:
                 subprocess.check_call([executable_path])
             except subprocess.CalledProcessError:
