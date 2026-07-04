@@ -4,7 +4,7 @@ import subprocess
 class CodeSmithyMake:
     def __init__(self, architecture, config):
         self.executable = os.getcwd() + "/" + config.build_dir + \
-                          "/CodeSmithyIDE/CodeSmithy/Bin/"
+                          "/codesmithyide/codesmithy/bin/"
         if architecture == "64":
             self.executable += "x64"
         else:
