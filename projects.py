@@ -371,7 +371,7 @@ class Projects:
             "DIPLODOCUSDB",
             "Makefiles/$(compiler_short_name)/DiplodocusXMLTreeDB.sln",
             False)
-        self.projects.append(Project(
+        self._add_codesmithyide_project(
             "CodeSmithyIDE/VersionControl/Git",
             "TODO_REPOSITORY",
             "main",
@@ -379,8 +379,8 @@ class Projects:
             config.build_dir,
             "CODESMITHYIDE",
             "Makefiles/$(compiler_short_name)/CodeSmithyGit.sln",
-            False))
-        self.projects.append(Project(
+            False)
+        self._add_codesmithyide_project(
             "CodeSmithyIDE/BuildToolchains",
             "TODO_REPOSITORY",
             "main",
@@ -388,8 +388,8 @@ class Projects:
             config.build_dir,
             "CODESMITHYIDE",
             "Makefiles/$(compiler_short_name)/CodeSmithyBuildToolchains.sln",
-            False))
-        self.projects.append(Project(
+            False)
+        self._add_codesmithyide_project(
             "CodeSmithyIDE/CodeSmithy/Core",
             "TODO_REPOSITORY",
             "main",
@@ -397,8 +397,8 @@ class Projects:
             config.build_dir,
             "CODESMITHYIDE",
             "Makefiles/$(compiler_short_name)/CodeSmithyCore.sln",
-            False))
-        self.projects.append(Project(
+            False)
+        self._add_codesmithyide_project(
             "CodeSmithyIDE/CodeSmithy/CLI",
             "TODO_REPOSITORY",
             "main",
@@ -406,7 +406,7 @@ class Projects:
             config.build_dir,
             "CODESMITHYIDE",
             "Makefiles/$(compiler_short_name)/CodeSmithyCLI.sln",
-            False))
+            False)
         self._add_ishiko_project(
             "Ishiko/TestFramework/Core",
             "TODO_REPOSITORY",
@@ -434,7 +434,7 @@ class Projects:
             "ISHIKO_CPP",
             "Makefiles/$(compiler_short_name)/IshikoFileTypes.sln",
             True)
-        self.projects.append(Project(
+        self._add_codesmithyide_project(
             "CodeSmithyIDE/CodeSmithy/UICore",
             "TODO_REPOSITORY",
             "main",
@@ -442,9 +442,9 @@ class Projects:
             config.build_dir,
             "CODESMITHYIDE",
             "Makefiles/$(compiler_short_name)/CodeSmithyUICore.sln",
-            True))
+            True)
         self.projects.append(wxWidgetsProject(config.downloads_dir, config.build_dir))
-        self.projects.append(Project(
+        self._add_codesmithyide_project(
             "CodeSmithyIDE/CodeSmithy/UIElements",
             "TODO_REPOSITORY",
             "main",
@@ -452,8 +452,8 @@ class Projects:
             config.build_dir,
             "CODESMITHYIDE",
             "Makefiles/$(compiler_short_name)/CodeSmithyUIElements.sln",
-            True))
-        self.projects.append(Project(
+            True)
+        self._add_codesmithyide_project(
             "CodeSmithyIDE/CodeSmithy/UIImplementation",
             "TODO_REPOSITORY",
             "main",
@@ -461,8 +461,8 @@ class Projects:
             config.build_dir,
             "CODESMITHYIDE",
             "Makefiles/$(compiler_short_name)/CodeSmithyUIImplementation.sln",
-            True))
-        self.projects.append(Project(
+            True)
+        self._add_codesmithyide_project(
             "CodeSmithyIDE/CodeSmithy/UI",
             "TODO_REPOSITORY",
             "main",
@@ -470,8 +470,8 @@ class Projects:
             config.build_dir,
             "CODESMITHYIDE",
             "Makefiles/$(compiler_short_name)/CodeSmithy.sln",
-            True))
-        self.projects.append(Project(
+            True)
+        self._add_codesmithyide_project(
             "CodeSmithyIDE/CodeSmithy/Tests/Core",
             "TODO_REPOSITORY",
             "main",
@@ -479,8 +479,8 @@ class Projects:
             config.build_dir,
             "CODESMITHYIDE",
             "Makefiles/$(compiler_short_name)/CodeSmithyCoreTests.sln",
-            True))
-        self.projects.append(Project(
+            True)
+        self._add_codesmithyide_project(
             "CodeSmithyIDE/CodeSmithy/Tests/Make",
             "TODO_REPOSITORY",
             "main",
@@ -488,8 +488,8 @@ class Projects:
             config.build_dir,
             "CODESMITHYIDE",
             "Makefiles/$(compiler_short_name)/CodeSmithyMakeTests.sln",
-            True))
-        self.projects.append(Project(
+            True)
+        self._add_codesmithyide_project(
             "CodeSmithyIDE/CodeSmithy/Tests/UICore",
             "TODO_REPOSITORY",
             "main",
@@ -497,7 +497,7 @@ class Projects:
             config.build_dir,
             "CODESMITHYIDE",
             "Makefiles/$(compiler_short_name)/CodeSmithyUICoreTests.sln",
-            True))
+            True)
         self.tests = []
         self.tests.append(Test("CodeSmithyIDE/CodeSmithy/Tests/Core",
                                "CodeSmithyCoreTests.exe"))
@@ -595,6 +595,19 @@ class Projects:
                                   env_var_name: str,
                                   makefile_path: Optional[str],
                                   use_codesmithy_make: bool):
+        self.projects.append(Project(name, repository, branch, download_path,
+                                     install_path, env_var_name, makefile_path,
+                                     use_codesmithy_make))
+
+    def _add_codesmithyide_project(self,
+                                   name: str,
+                                   repository: str,
+                                   branch: str,
+                                   download_path: str,
+                                   install_path: str,
+                                   env_var_name: str,
+                                   makefile_path: Optional[str],
+                                   use_codesmithy_make: bool):
         self.projects.append(Project(name, repository, branch, download_path,
                                      install_path, env_var_name, makefile_path,
                                      use_codesmithy_make))
