@@ -119,7 +119,7 @@ def main_bootstrap_build(args, input, state, output, config):
         Path(second_phase_path).mkdir(exist_ok=True)
         print(second_phase_path)
         # TODO
-        shutil.copyfile(config.build_dir + "/CodeSmithyIDE/CodeSmithy/Bin/x64/CodeSmithy.exe", second_phase_path + "/CodeSmithy.exe")
+        shutil.copyfile(config.build_dir + "/codesmithyide/codesmithy/bin/x64/CodeSmithy.exe", second_phase_path + "/CodeSmithy.exe")
         output.next_step()
     except RuntimeError as error:
         print("")
