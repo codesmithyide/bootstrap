@@ -15,6 +15,7 @@ class Project:
 
     def __init__(self,
                  name: str,
+                 repository: str,
                  branch: str,
                  download_path: str,
                  install_path: str,
@@ -27,6 +28,9 @@ class Project:
         name : str
             The name of the project. The location of the package to download is
             derived from the name.
+        repository : str
+            The name of the source repository. Combined with the branch, this
+            identifies the source to download.
         branch : str
             The name of the branch to download.
         download_path : str
@@ -46,6 +50,7 @@ class Project:
         """
 
         self.name = name
+        self.repository = repository
         self.branch = branch
         self.download_path = download_path
         self.install_path = install_path
@@ -208,7 +213,7 @@ class libgit2Project(Project):
 
 class wxWidgetsProject(Project):
     def __init__(self, download_path, install_path):
-        super().__init__("wxWidgets", "main", download_path, install_path, "WXWIN",
+        super().__init__("wxWidgets", "master", download_path, install_path, "WXWIN",
                          "build/msw/wx_$(compiler_short_name).sln", False)
 
     def create_downloader(self):
@@ -268,6 +273,7 @@ class Projects:
         self.projects.append(libgit2Project(config.downloads_dir, config.build_dir, target))
         self.projects.append(Project(
             "Ishiko/Platform",
+            "ishiko-cpp_platform",
             "main",
             config.downloads_dir,
             config.build_dir,
@@ -276,6 +282,7 @@ class Projects:
             False))
         self.projects.append(Project(
             "Ishiko/Errors",
+            "ishiko-cpp_errors",
             "main",
             config.downloads_dir,
             config.build_dir,
@@ -284,6 +291,7 @@ class Projects:
             False))
         self.projects.append(Project(
             "Ishiko/Types",
+            "ishiko-cpp_types",
             "main",
             config.downloads_dir,
             config.build_dir,
@@ -292,6 +300,7 @@ class Projects:
             False))
         self.projects.append(Project(
             "Ishiko/Process",
+            "ishiko-cpp_process",
             "main",
             config.downloads_dir,
             config.build_dir,
@@ -300,6 +309,7 @@ class Projects:
             False))
         self.projects.append(Project(
             "Ishiko/Collections",
+            "ishiko-cpp_collections",
             "main",
             config.downloads_dir,
             config.build_dir,
@@ -308,6 +318,7 @@ class Projects:
             False))
         self.projects.append(Project(
             "Ishiko/FileSystem",
+            "ishiko-cpp_filesystem",
             "main",
             config.downloads_dir,
             config.build_dir,
@@ -316,6 +327,7 @@ class Projects:
             False))
         self.projects.append(Project(
             "Ishiko/Terminal",
+            "ishiko-cpp_terminal",
             "main",
             config.downloads_dir,
             config.build_dir,
@@ -324,6 +336,7 @@ class Projects:
             False))
         self.projects.append(Project(
             "Ishiko/Tasks",
+            "ishiko-cpp_tasks",
             "main",
             config.downloads_dir,
             config.build_dir,
@@ -396,6 +409,7 @@ class Projects:
             True))
         self.projects.append(Project(
             "Ishiko/WindowsRegistry",
+            "ishiko-cpp_windowsregistry",
             "main",
             config.downloads_dir,
             config.build_dir,
@@ -404,6 +418,7 @@ class Projects:
             True))
         self.projects.append(Project(
             "Ishiko/FileTypes",
+            "ishiko-cpp_filetypes",
             "main",
             config.downloads_dir,
             config.build_dir,
