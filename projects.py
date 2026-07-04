@@ -196,7 +196,7 @@ class Project:
 
 class libgit2Project(Project):
     def __init__(self, download_path, install_path, target):
-        super().__init__("libgit2", "main", download_path, install_path, "LIBGIT2",
+        super().__init__("libgit2", "TODO_REPOSITORY", "main", download_path, install_path, "LIBGIT2",
                          "$(arch)/CMakeLists.txt", False)
         self.target = target
         self.cmake_generation_args = ["-DBUILD_SHARED_LIBS=OFF",
@@ -213,7 +213,7 @@ class libgit2Project(Project):
 
 class wxWidgetsProject(Project):
     def __init__(self, download_path, install_path):
-        super().__init__("wxWidgets", "master", download_path, install_path, "WXWIN",
+        super().__init__("wxWidgets", "TODO_REPOSITORY", "master", download_path, install_path, "WXWIN",
                          "build/msw/wx_$(compiler_short_name).sln", False)
 
     def create_downloader(self):
@@ -264,6 +264,7 @@ class Projects:
         self.projects = []
         self.projects.append(Project(
             "pugixml",
+            "TODO_REPOSITORY",
             "master",
             config.downloads_dir,
             config.build_dir,
@@ -345,6 +346,7 @@ class Projects:
             False))
         self.projects.append(Project(
             "DiplodocusDB/Core",
+            "TODO_REPOSITORY",
             "main",
             config.downloads_dir,
             config.build_dir,
@@ -353,6 +355,7 @@ class Projects:
             False))
         self.projects.append(Project(
             "DiplodocusDB/TreeDB/Core",
+            "TODO_REPOSITORY",
             "main",
             config.downloads_dir,
             config.build_dir,
@@ -361,6 +364,7 @@ class Projects:
             False))
         self.projects.append(Project(
             "DiplodocusDB/TreeDB/XMLTreeDB",
+            "TODO_REPOSITORY",
             "main",
             config.downloads_dir,
             config.build_dir,
@@ -369,6 +373,7 @@ class Projects:
             False))
         self.projects.append(Project(
             "CodeSmithyIDE/VersionControl/Git",
+            "TODO_REPOSITORY",
             "main",
             config.downloads_dir,
             config.build_dir,
@@ -377,6 +382,7 @@ class Projects:
             False))
         self.projects.append(Project(
             "CodeSmithyIDE/BuildToolchains",
+            "TODO_REPOSITORY",
             "main",
             config.downloads_dir,
             config.build_dir,
@@ -385,6 +391,7 @@ class Projects:
             False))
         self.projects.append(Project(
             "CodeSmithyIDE/CodeSmithy/Core",
+            "TODO_REPOSITORY",
             "main",
             config.downloads_dir,
             config.build_dir,
@@ -393,6 +400,7 @@ class Projects:
             False))
         self.projects.append(Project(
             "CodeSmithyIDE/CodeSmithy/CLI",
+            "TODO_REPOSITORY",
             "main",
             config.downloads_dir,
             config.build_dir,
@@ -401,6 +409,7 @@ class Projects:
             False))
         self.projects.append(Project(
             "Ishiko/TestFramework/Core",
+            "TODO_REPOSITORY",
             "main",
             config.downloads_dir,
             config.build_dir,
@@ -427,6 +436,7 @@ class Projects:
             True))
         self.projects.append(Project(
             "CodeSmithyIDE/CodeSmithy/UICore",
+            "TODO_REPOSITORY",
             "main",
             config.downloads_dir,
             config.build_dir,
@@ -436,6 +446,7 @@ class Projects:
         self.projects.append(wxWidgetsProject(config.downloads_dir, config.build_dir))
         self.projects.append(Project(
             "CodeSmithyIDE/CodeSmithy/UIElements",
+            "TODO_REPOSITORY",
             "main",
             config.downloads_dir,
             config.build_dir,
@@ -444,6 +455,7 @@ class Projects:
             True))
         self.projects.append(Project(
             "CodeSmithyIDE/CodeSmithy/UIImplementation",
+            "TODO_REPOSITORY",
             "main",
             config.downloads_dir,
             config.build_dir,
@@ -452,6 +464,7 @@ class Projects:
             True))
         self.projects.append(Project(
             "CodeSmithyIDE/CodeSmithy/UI",
+            "TODO_REPOSITORY",
             "main",
             config.downloads_dir,
             config.build_dir,
@@ -460,6 +473,7 @@ class Projects:
             True))
         self.projects.append(Project(
             "CodeSmithyIDE/CodeSmithy/Tests/Core",
+            "TODO_REPOSITORY",
             "main",
             config.downloads_dir,
             config.build_dir,
@@ -468,6 +482,7 @@ class Projects:
             True))
         self.projects.append(Project(
             "CodeSmithyIDE/CodeSmithy/Tests/Make",
+            "TODO_REPOSITORY",
             "main",
             config.downloads_dir,
             config.build_dir,
@@ -476,6 +491,7 @@ class Projects:
             True))
         self.projects.append(Project(
             "CodeSmithyIDE/CodeSmithy/Tests/UICore",
+            "TODO_REPOSITORY",
             "main",
             config.downloads_dir,
             config.build_dir,
