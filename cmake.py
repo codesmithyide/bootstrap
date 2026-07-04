@@ -95,7 +95,7 @@ class CMake:
             zip_ref.extractall(self.config.build_dir)
             zip_ref.close()
         elif target.platform == "Linux":
-            download_url = "https://github.com/CodeSmithyIDE/CMake/archive/main.zip"
+            download_url = "https://github.com/codesmithyide/CMake/archive/main.zip"
             download = Download("CMake", download_url, self.config.build_dir,
                                 self.config.downloads_dir)
             download.download(None)
