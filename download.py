@@ -26,7 +26,7 @@ class Download:
         Path(self.download_path).parent.mkdir(parents=True, exist_ok=True)
         urllib.request.urlretrieve(self.url, self.download_path)
 
-    def unzip(self, destination_dirs=None):
+    def unzip(self, destination_dirs):
         """Creates a downloader to download the package(s) for this project.
 
         Parameters
