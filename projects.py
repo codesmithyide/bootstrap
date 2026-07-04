@@ -17,6 +17,7 @@ class Project:
                  name: str,
                  repository: str,
                  branch: str,
+                 download_path: str,
                  install_path: str,
                  env_var_name: str,
                  env_var_value: str,
@@ -28,7 +29,17 @@ class Project:
         name : str
             The name of the project. The location of the package to download is
             derived from the name.
-        env_var : str
+        repository : str
+            The name of the source repository. Combined with the branch, this
+            identifies the source to download.
+        branch : str
+            The name of the branch to download.
+        download_path : str
+            The directory where downloaded packages are cached.
+        install_path : str
+            The directory under which the project is unzipped and built (the
+            build directory).
+        env_var_name : str
             The name of the environment variable that will point to the
             location of this project. The location is derived from the name.
         makefile_path : str, optional
@@ -42,6 +53,7 @@ class Project:
         self.name = name
         self.repository = repository
         self.branch = branch
+        self.download_path = download_path
         self.install_path = install_path
         self.env_var_name = env_var_name
         self.env_var_value = env_var_value
@@ -253,7 +265,7 @@ class Projects:
         self.projects.append(libgit2Project(target))
         self.projects.append(Project(
             "Ishiko/Platform",
-            "ishiko-cpp-platform",
+            "ishiko-cpp_platform",
             "main",
             "build/ishiko/cpp/platform",
             "ISHIKO_CPP",
