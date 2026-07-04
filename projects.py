@@ -344,7 +344,7 @@ class Projects:
             "ISHIKO_CPP",
             "Makefiles/$(compiler_short_name)/IshikoTasks.sln",
             False)
-        self.projects.append(Project(
+        self._add_diplodocusdb_project(
             "DiplodocusDB/Core",
             "TODO_REPOSITORY",
             "main",
@@ -352,8 +352,8 @@ class Projects:
             config.build_dir,
             "DIPLODOCUSDB",
             "Makefiles/$(compiler_short_name)/DiplodocusDBCore.sln",
-            False))
-        self.projects.append(Project(
+            False)
+        self._add_diplodocusdb_project(
             "DiplodocusDB/TreeDB/Core",
             "TODO_REPOSITORY",
             "main",
@@ -361,8 +361,8 @@ class Projects:
             config.build_dir,
             "DIPLODOCUSDB",
             "Makefiles/$(compiler_short_name)/DiplodocusTreeDBCore.sln",
-            False))
-        self.projects.append(Project(
+            False)
+        self._add_diplodocusdb_project(
             "DiplodocusDB/TreeDB/XMLTreeDB",
             "TODO_REPOSITORY",
             "main",
@@ -370,7 +370,7 @@ class Projects:
             config.build_dir,
             "DIPLODOCUSDB",
             "Makefiles/$(compiler_short_name)/DiplodocusXMLTreeDB.sln",
-            False))
+            False)
         self.projects.append(Project(
             "CodeSmithyIDE/VersionControl/Git",
             "TODO_REPOSITORY",
@@ -582,6 +582,19 @@ class Projects:
                             env_var_name: str,
                             makefile_path: Optional[str],
                             use_codesmithy_make: bool):
+        self.projects.append(Project(name, repository, branch, download_path,
+                                     install_path, env_var_name, makefile_path,
+                                     use_codesmithy_make))
+
+    def _add_diplodocusdb_project(self,
+                                  name: str,
+                                  repository: str,
+                                  branch: str,
+                                  download_path: str,
+                                  install_path: str,
+                                  env_var_name: str,
+                                  makefile_path: Optional[str],
+                                  use_codesmithy_make: bool):
         self.projects.append(Project(name, repository, branch, download_path,
                                      install_path, env_var_name, makefile_path,
                                      use_codesmithy_make))
