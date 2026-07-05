@@ -39,6 +39,8 @@ class VisualStudio(Compiler):
             cmake_generator = "Visual Studio 14 2015"
         elif short_name == "vc15":
             cmake_generator = "Visual Studio 15 2017"
+        elif short_name == "vc17":
+            cmake_generator = "Visual Studio 17 2022"
         elif short_name == "vc18":
             cmake_generator = "Visual Studio 18 2026"
         # The " Win64" generator suffix only exists for VS2017 and earlier.
@@ -68,6 +70,9 @@ class Compilers:
         foundMSVC2026 = os.path.isfile("C:/Program Files/Microsoft Visual Studio/18/Community/Common7/IDE/devenv.exe")
         if foundMSVC2026:
             self.compilers.append(VisualStudio("Visual Studio 2026", "vc18", "C:/Program Files/Microsoft Visual Studio/18/Community/Common7/IDE/devenv.exe", self.architecture))
+        foundMSVC2022 = os.path.isfile("C:/Program Files/Microsoft Visual Studio/2022/Professional/Common7/IDE/devenv.exe")
+        if foundMSVC2022:
+            self.compilers.append(VisualStudio("Visual Studio 2022", "vc17", "C:/Program Files/Microsoft Visual Studio/2022/Professional/Common7/IDE/devenv.exe", self.architecture))
         foundMSVC2017 = os.path.isfile("C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/Common7/IDE/devenv.exe")
         if foundMSVC2017:
             self.compilers.append(VisualStudio("Visual Studio 2017", "vc15", "C:/Program Files (x86)/Microsoft Visual Studio/2017/Community/Common7/IDE/devenv.exe", self.architecture))

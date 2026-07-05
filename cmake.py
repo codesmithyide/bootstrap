@@ -82,12 +82,12 @@ class CMake:
         if target.platform == "Windows":
             architecture_string = ""
             if target.architecture == "64":
-                architecture_string = "-win64-x64"
+                architecture_string = "-windows-x86_64"
             else:
-                architecture_string = "-win32-x86"
-            source_path = "CMake/cmake-3.12.3" + architecture_string + ".zip"
+                architecture_string = "-windows-i386"
+            source_path = "CMake/cmake-4.3.4" + architecture_string + ".zip"
             zip_ref = zipfile.ZipFile(source_path, "r")
-            self.path = self.config.build_dir + "/cmake-3.12.3" + \
+            self.path = self.config.build_dir + "/cmake-4.3.4" + \
                         architecture_string + "/bin/cmake.exe"
 
             # TODO : the path we delete here doesn't seem right
