@@ -103,7 +103,7 @@ class CMake:
             download = Download("CMake", download_url, self.config.build_dir,
                                 self.config.downloads_dir, "main")
             download.download(None)
-            download.unzip(None)
+            download.unzip()
             previous_working_dir = os.getcwd()
             os.chdir(self.config.build_dir + "/CMake")
             try:
