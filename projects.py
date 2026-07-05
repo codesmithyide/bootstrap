@@ -267,7 +267,7 @@ class Projects:
             "Ishiko/BasePlatform",
             "ishiko-cpp_base-platform",
             "main",
-            "build/ishiko/cpp/platform",
+            "build-files/ishiko/cpp/platform",
             "ISHIKO_CPP",
             "ishiko/cpp",
             None,
@@ -279,7 +279,7 @@ class Projects:
             "build/ishiko/cpp/errors",
             "ISHIKO_CPP",
             "ishiko/cpp",
-            "build/$(compiler_short_name)/IshikoErrors.sln",
+            "build-files/$(compiler_short_name)/IshikoErrors.sln",
             False))
         self._add_ishiko_project(
             "Ishiko/Types",
@@ -288,7 +288,7 @@ class Projects:
             "build/ishiko/cpp/types",
             "ISHIKO_CPP",
             "ishiko/cpp",
-            "build/$(compiler_short_name)/IshikoTypes.sln",
+            "build-files/$(compiler_short_name)/IshikoTypes.sln",
             False))
         self._add_ishiko_project(
             "Ishiko/Collections",
@@ -297,7 +297,7 @@ class Projects:
             "build/ishiko/cpp/collections",
             "ISHIKO_CPP",
             "ishiko/cpp",
-            "build/$(compiler_short_name)/IshikoCollections.sln",
+            "build-files/$(compiler_short_name)/IshikoCollections.sln",
             False))
         self._add_ishiko_project(
             "Ishiko/Text",
@@ -306,7 +306,7 @@ class Projects:
             "build/ishiko/cpp/text",
             "ISHIKO_CPP",
             "ishiko/cpp",
-            "build/$(compiler_short_name)/IshikoText.sln",
+            "build-files/$(compiler_short_name)/IshikoText.sln",
             False))
         self._add_ishiko_project(
             "Ishiko/Process",
@@ -315,7 +315,7 @@ class Projects:
             "build/ishiko/cpp/process",
             "ISHIKO_CPP",
             "ishiko/cpp",
-            "build/$(compiler_short_name)/IshikoProcess.sln",
+            "build-files/$(compiler_short_name)/IshikoProcess.sln",
             False))
         self._add_ishiko_project(
             "Ishiko/FileSystem",
@@ -324,7 +324,7 @@ class Projects:
             "build/ishiko/cpp/filesystem",
             "ISHIKO_CPP",
             "ishiko/cpp",
-            "build/$(compiler_short_name)/IshikoFileSystem.sln",
+            "build-files/$(compiler_short_name)/IshikoFileSystem.sln",
             False))
         self._add_ishiko_project(
             "Ishiko/Terminal",
@@ -333,7 +333,7 @@ class Projects:
             "build/ishiko/cpp/terminal",
             "ISHIKO_CPP",
             "ishiko/cpp",
-            "build/$(compiler_short_name)/IshikoTerminal.sln",
+            "build-files/$(compiler_short_name)/IshikoTerminal.sln",
             False))
         self._add_ishiko_project(
             "Ishiko/Workflows",
@@ -342,7 +342,7 @@ class Projects:
             "build/ishiko/cpp/tasks",
             "ISHIKO_CPP",
             "ishiko/cpp",
-            "build/$(compiler_short_name)/IshikoTasks.sln",
+            "build-files/$(compiler_short_name)/IshikoTasks.sln",
             False))
         self._add_diplodocusdb_project(
             "DiplodocusDB/Core",
@@ -354,8 +354,8 @@ class Projects:
             "build/$(compiler_short_name)/DiplodocusDBCore.sln",
             False))
         self._add_diplodocusdb_project(
-            "DiplodocusDB/TreeDB/Core",
-            "diplodocusdb-tree-db",
+            "DiplodocusDB/PhysicalStorage",
+            "diplodocusdb_physical-storage",
             "main",
             "build/diplodocusdb/tree-db",
             "DIPLODOCUSDB",
@@ -363,8 +363,16 @@ class Projects:
             "core/build/$(compiler_short_name)/DiplodocusTreeDBCore.sln",
             False))
         self._add_diplodocusdb_project(
-            "DiplodocusDB/TreeDB/XMLTreeDB",
-            "diplodocusdb-tree-db",
+            "DiplodocusDB/EmbeddedDocumentDB/StorageEngine",
+            "diplodocusdb_embedded-document-db",
+            "main",
+            "build/diplodocusdb/tree-db",
+            "DIPLODOCUSDB",
+            "Makefiles/$(compiler_short_name)/DiplodocusXMLTreeDB.sln",
+            False)
+        self._add_diplodocusdb_project(
+            "DiplodocusDB/EmbeddedDocumentDB/Database",
+            "diplodocusdb_embedded-document-db",
             "main",
             "build/diplodocusdb/tree-db",
             "DIPLODOCUSDB",
@@ -579,13 +587,12 @@ class Projects:
     def _add_ishiko_project(self,
                             name: str,
                             repository: str,
-                            branch: str,
                             download_path: str,
                             install_path: str,
                             env_var_name: str,
                             makefile_path: Optional[str],
                             use_codesmithy_make: bool):
-        self.projects.append(Project(name, repository, branch, download_path,
+        self.projects.append(Project(name, repository, "main", download_path,
                                      install_path, env_var_name, makefile_path,
                                      use_codesmithy_make))
 
