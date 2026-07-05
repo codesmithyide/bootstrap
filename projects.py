@@ -275,7 +275,6 @@ class Projects:
         self._add_ishiko_project(
             "Ishiko/BasePlatform",
             "ishiko-cpp_base-platform",
-            "main",
             config.downloads_dir,
             config.build_dir,
             "ISHIKO_CPP",
@@ -284,7 +283,6 @@ class Projects:
         self._add_ishiko_project(
             "Ishiko/Errors",
             "ishiko-cpp_errors",
-            "main",
             config.downloads_dir,
             config.build_dir,
             "ISHIKO_CPP",
@@ -293,7 +291,6 @@ class Projects:
         self._add_ishiko_project(
             "Ishiko/Types",
             "ishiko-cpp_types",
-            "main",
             config.downloads_dir,
             config.build_dir,
             "ISHIKO_CPP",
@@ -302,7 +299,6 @@ class Projects:
         self._add_ishiko_project(
             "Ishiko/Process",
             "ishiko-cpp_process",
-            "main",
             config.downloads_dir,
             config.build_dir,
             "ISHIKO_CPP",
@@ -311,7 +307,6 @@ class Projects:
         self._add_ishiko_project(
             "Ishiko/Collections",
             "ishiko-cpp_collections",
-            "main",
             config.downloads_dir,
             config.build_dir,
             "ISHIKO_CPP",
@@ -320,7 +315,6 @@ class Projects:
         self._add_ishiko_project(
             "Ishiko/FileSystem",
             "ishiko-cpp_filesystem",
-            "main",
             config.downloads_dir,
             config.build_dir,
             "ISHIKO_CPP",
@@ -329,7 +323,6 @@ class Projects:
         self._add_ishiko_project(
             "Ishiko/Terminal",
             "ishiko-cpp_terminal",
-            "main",
             config.downloads_dir,
             config.build_dir,
             "ISHIKO_CPP",
@@ -338,7 +331,6 @@ class Projects:
         self._add_ishiko_project(
             "Ishiko/Workflows",
             "ishiko-cpp_workflows",
-            "main",
             config.downloads_dir,
             config.build_dir,
             "ISHIKO_CPP",
@@ -410,7 +402,6 @@ class Projects:
         self._add_ishiko_project(
             "Ishiko/TestFramework/Core",
             "TODO_REPOSITORY11",
-            "main",
             config.downloads_dir,
             config.build_dir,
             "ISHIKO_CPP",
@@ -419,7 +410,6 @@ class Projects:
         self._add_ishiko_project(
             "Ishiko/WindowsRegistry",
             "ishiko-cpp_windowsregistry",
-            "main",
             config.downloads_dir,
             config.build_dir,
             "ISHIKO_CPP",
@@ -428,7 +418,6 @@ class Projects:
         self._add_ishiko_project(
             "Ishiko/FileTypes",
             "ishiko-cpp_filetypes",
-            "main",
             config.downloads_dir,
             config.build_dir,
             "ISHIKO_CPP",
@@ -576,13 +565,12 @@ class Projects:
     def _add_ishiko_project(self,
                             name: str,
                             repository: str,
-                            branch: str,
                             download_path: str,
                             install_path: str,
                             env_var_name: str,
                             makefile_path: Optional[str],
                             use_codesmithy_make: bool):
-        self.projects.append(Project(name, repository, branch, download_path,
+        self.projects.append(Project(name, repository, "main", download_path,
                                      install_path, env_var_name, makefile_path,
                                      use_codesmithy_make))
 
