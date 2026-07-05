@@ -93,7 +93,7 @@ def main_bootstrap_build(args, input, state, output, config):
         build_configuration.select_configuration(target.architecture,
                                                  compiler, input, state)
 
-        cmake = CMake(compiler.cmake_generator, config)
+        cmake = CMake(compiler.cmake_generator, compiler.cmake_architecture, config)
         cmake.install(target, state, output)
 
         codesmithymake = CodeSmithyMake(target.architecture, config)

@@ -14,8 +14,9 @@ from build import BuildConfiguration
 class CMake:
     """Wrapper used to invoke CMake."""
 
-    def __init__(self, generator, config):
+    def __init__(self, generator, architecture, config):
         self.generator = generator
+        self.architecture = architecture
         self.config = config
 
     def install(self, target: Target, state: State, output: Output):
@@ -63,7 +64,10 @@ class CMake:
         try:
             with open(logfile, "w") as output_file:
                 cmake_path = previous_working_dir + "/" + self.path
-                generation_args = [cmake_path, "-G", self.generator, "."]
+                generation_args = [cmake_path, "-G", self.generator]
+                if self.architecture:
+                    generation_args.extend(["-A", self.architecture])
+                generation_args.append(".")
                 generation_args.extend(build_configuration.cmake_generation_args)
                 print("    Executing " + " ".join(generation_args))
                 subprocess.check_call(generation_args, stdout=output_file)
