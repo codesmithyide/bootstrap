@@ -7,7 +7,7 @@ import zipfile
 
 class Download:
     def __init__(self, name, url, extract_path, download_dir, branch,
-                 destination_dirs=None):
+                 destination_dirs):
         self.name = name
         self.url = url
         self.branch = branch
@@ -22,8 +22,6 @@ class Download:
         # correct: a single download can be shared by several projects (and
         # deduplicated by Downloader.merge), and it must be installed to all
         # of its destinations exactly once.
-        if destination_dirs is None:
-            destination_dirs = [self.extract_path_prefix + self.name]
         self.destination_dirs = destination_dirs
 
         self.unzipped = False
