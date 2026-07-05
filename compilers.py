@@ -4,14 +4,14 @@ import subprocess
 
 class Compiler:
     def __init__(self, name, short_name, executable, cmake_generator,
-                 cmake_platform=None):
+                 cmake_architecture=None):
         self.name = name
         self.short_name = short_name
         self.executable = executable
         self.cmake_generator = cmake_generator
-        # The CMake "-A" platform argument (e.g. "x64" / "Win32"), or None for
-        # generators that don't take one (e.g. Unix Makefiles).
-        self.cmake_platform = cmake_platform
+        # The CMake "-A" architecture argument (e.g. "x64" / "Win32"), or None
+        # for generators that don't take one (e.g. Unix Makefiles).
+        self.cmake_architecture = cmake_architecture
 
     def compile(self, makefile_path, configuration, input):
         try:
@@ -46,11 +46,11 @@ class VisualStudio(Compiler):
         # VS2019+ generators select the architecture with the "-A" argument
         # rather than a generator-name suffix.
         if architecture == "64":
-            cmake_platform = "x64"
+            cmake_architecture = "x64"
         else:
-            cmake_platform = "Win32"
+            cmake_architecture = "Win32"
         super().__init__(name, short_name, executable, cmake_generator,
-                         cmake_platform)
+                         cmake_architecture)
 
     def compile(self, makefile_path, configuration, input):
         try:
