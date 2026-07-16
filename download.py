@@ -6,8 +6,7 @@ import zipfile
 
 
 class Download:
-    def __init__(self, name, url, extract_path, download_dir, branch,
-                 destination_dirs):
+    def __init__(self, name, url, download_dir, branch, destination_dirs):
         self.name = name
         self.url = url
         self.branch = branch
@@ -15,13 +14,12 @@ class Download:
         self.download_path = download_dir + "/"
         self.download_path += self.name + "-" + self.branch + ".zip"
 
-        self.extract_path_prefix = extract_path + "/"
-
         # The install location(s) are fixed at creation time rather than
         # passed to unzip(). This is what makes the self.unzipped guard
         # correct: a single download can be shared by several projects (and
         # deduplicated by Downloader.merge), and it must be installed to all
-        # of its destinations exactly once.
+        # of its destinations exactly once. Each destination is the exact
+        # directory the archive is unzipped into.
         self.destination_dirs = destination_dirs
 
         self.unzipped = False
@@ -45,13 +43,17 @@ class Download:
         if not self.unzipped:
             print("    Unzipping " + self.download_path, flush=True)
             for destination_dir in self.destination_dirs:
-                temp_destination_dir = self.extract_path_prefix + self.name + "-" + self.branch
+                # The archive contains a single top-level "<name>-<branch>"
+                # folder. Extract it next to the destination, then rename it
+                # to the exact destination directory.
+                extract_dir = os.path.dirname(destination_dir)
+                temp_destination_dir = extract_dir + "/" + self.name + "-" + self.branch
                 shutil.rmtree(destination_dir, ignore_errors=True)
                 shutil.rmtree(temp_destination_dir, ignore_errors=True)
+                Path(extract_dir).mkdir(parents=True, exist_ok=True)
                 zip_ref = zipfile.ZipFile(self.download_path, "r")
-                zip_ref.extractall(self.extract_path_prefix)
+                zip_ref.extractall(extract_dir)
                 zip_ref.close()
-                Path(destination_dir).parent.mkdir(parents=True, exist_ok=True)
                 os.rename(temp_destination_dir, destination_dir)
         else:
             print("    " + self.download_path + " already unzipped",
@@ -63,7 +65,6 @@ class Download:
             return False
         return ((self.name == other.name) and (self.url == other.url) and
                 (self.download_path == other.download_path) and
-                (self.extract_path_prefix == other.extract_path_prefix) and
                 (self.destination_dirs == other.destination_dirs))
 
 
