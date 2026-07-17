@@ -19,6 +19,7 @@ class Project:
                  download_path: str,
                  extract_path: str,
                  env_var_name: str,
+                 env_var_value: str,
                  makefile_path: Optional[str],
                  use_codesmithy_make: bool):
         """
@@ -38,7 +39,9 @@ class Project:
             no path manipulation is done on it.
         env_var_name : str
             The name of the environment variable that will point to the
-            location of this project. The location is derived from the name.
+            location of this project.
+        env_var_value : str
+            The directory the environment variable points to.
         makefile_path : str, optional
             The exact path of the makefile used to build the project. None if
             the project only needs to be downloaded.
@@ -52,6 +55,7 @@ class Project:
         self.download_path = download_path
         self.extract_path = extract_path
         self.env_var_name = env_var_name
+        self.env_var_value = env_var_value
         self.makefile_path = makefile_path
         self.use_codesmithy_make = use_codesmithy_make
         self.cmake_generation_args = []
@@ -173,6 +177,7 @@ class libgit2Project(Project):
     def __init__(self, download_path, build_dir, target):
         super().__init__("libgit2", "libgit2_libgit2", "main", download_path,
                          build_dir + "/libgit2", "LIBGIT2",
+                         build_dir + "/libgit2",
                          build_dir + "/libgit2/$(arch)/CMakeLists.txt", False)
         self.target = target
         self.cmake_generation_args = ["-DBUILD_SHARED_LIBS=OFF",
@@ -196,6 +201,7 @@ class wxWidgetsProject(Project):
     def __init__(self, download_path, build_dir):
         super().__init__("wxWidgets", "wxWidgets", "master", download_path,
                          build_dir + "/wxWidgets", "WXWIN",
+                         build_dir + "/wxWidgets",
                          build_dir + "/wxWidgets/build/msw/wx_$(compiler_short_name).sln",
                          False)
 
@@ -253,63 +259,48 @@ class Projects:
             config.downloads_dir,
             config.build_dir + "/pugixml",
             "PUGIXML",
+            config.build_dir + "/pugixml",
             None,
             False))
         self.projects.append(libgit2Project(config.downloads_dir, config.build_dir, target))
         self._add_ishiko_project(
             "Ishiko/BasePlatform",
             "ishiko-cpp_base-platform",
-            "Ishiko/BasePlatform",
-            "ISHIKO_CPP",
             "build-files/$(compiler_short_name)/IshikoBasePlatform.sln",
             False)
         self._add_ishiko_project(
             "Ishiko/Errors",
             "ishiko-cpp_errors",
-            "Ishiko/Errors",
-            "ISHIKO_CPP",
             "build-files/$(compiler_short_name)/IshikoErrors.sln",
             False)
         self._add_ishiko_project(
             "Ishiko/Types",
             "ishiko-cpp_types",
-            "Ishiko/Types",
-            "ISHIKO_CPP",
             "build-files/$(compiler_short_name)/IshikoTypes.sln",
             False)
         self._add_ishiko_project(
             "Ishiko/Process",
             "ishiko-cpp_process",
-            "Ishiko/Process",
-            "ISHIKO_CPP",
             "build-files/$(compiler_short_name)/IshikoProcess.sln",
             False)
         self._add_ishiko_project(
             "Ishiko/Collections",
             "ishiko-cpp_collections",
-            "Ishiko/Collections",
-            "ISHIKO_CPP",
             "build-files/$(compiler_short_name)/IshikoCollections.sln",
             False)
         self._add_ishiko_project(
             "Ishiko/FileSystem",
             "ishiko-cpp_filesystem",
-            "Ishiko/FileSystem",
-            "ISHIKO_CPP",
             "build-files/$(compiler_short_name)/IshikoFileSystem.sln",
             False)
         self._add_ishiko_project(
             "Ishiko/Terminal",
             "ishiko-cpp_terminal",
-            "Ishiko/Terminal",
-            "ISHIKO_CPP",
             "build-files/$(compiler_short_name)/IshikoTerminal.sln",
             False)
         self._add_ishiko_project(
             "Ishiko/Workflows",
             "ishiko-cpp_workflows",
-            "Ishiko/Workflows",
-            "ISHIKO_CPP",
             "build-files/$(compiler_short_name)/IshikoTasks.sln",
             False)
         self._add_diplodocusdb_project(
@@ -371,22 +362,16 @@ class Projects:
         self._add_ishiko_project(
             "Ishiko/TestFramework/Core",
             "ishiko-cpp_test-framework",
-            "Ishiko/TestFramework",
-            "ISHIKO_CPP",
-            "Makefiles/$(compiler_short_name)/IshikoTestFrameworkCore.sln",
+            "core/build-files/$(compiler_short_name)/IshikoTestFrameworkCore.sln",
             True)
         self._add_ishiko_project(
             "Ishiko/WindowsRegistry",
             "ishiko-cpp_windows-registry",
-            "Ishiko/WindowsRegistry",
-            "ISHIKO_CPP",
             "Makefiles/$(compiler_short_name)/IshikoWindowsRegistry.sln",
             True)
         self._add_ishiko_project(
             "Ishiko/FileTypes",
             "ishiko-cpp_file-types",
-            "Ishiko/FileTypes",
-            "ISHIKO_CPP",
             "Makefiles/$(compiler_short_name)/IshikoFileTypes.sln",
             True)
         self._add_codesmithyide_project(
@@ -455,8 +440,7 @@ class Projects:
         output.print_step_title("Setting environment variables")
         env = {}
         for project in self.projects:
-            value = os.getcwd() + "/" + self.config.build_dir + "/" + \
-                    project.name.split("/")[0]
+            value = os.getcwd() + "/" + project.env_var_value
             if project.env_var_name in env:
                 old_value = env[project.env_var_name]
                 if (old_value != value):
@@ -525,23 +509,59 @@ class Projects:
         # project that comes from the same repository). The makefile still
         # lives under the project's own name inside that tree.
         extract_path = self.config.build_dir + "/" + extract_subdir
+        env_var_value = self.config.build_dir + "/" + name.split("/")[0]
         if makefile_path is not None:
             makefile_path = self.config.build_dir + "/" + name + "/" + \
                             makefile_path
         self.projects.append(Project(name, repository, "main",
                                      self.config.downloads_dir,
-                                     extract_path, env_var_name,
+                                     extract_path, env_var_name, env_var_value,
                                      makefile_path, use_codesmithy_make))
 
     def _add_ishiko_project(self,
                             name: str,
                             repository: str,
-                            extract_subdir: str,
-                            env_var_name: str,
                             makefile_path: Optional[str],
                             use_codesmithy_make: bool):
-        self._add_project(name, repository, extract_subdir, env_var_name,
-                          makefile_path, use_codesmithy_make)
+        """Adds a project from the ishiko-cpp namespace.
+
+        The install location is derived from the repository name: the '_'
+        separates the namespace from the repository name, so
+        ishiko-cpp_base-platform is the base-platform repository of the
+        ishiko-cpp namespace and is unzipped at
+        <build_dir>/ishiko/cpp/base-platform.
+
+        This layout is the one the projects expect: they refer to their
+        dependencies as $(ISHIKO_CPP_ROOT)/<repository name>, so
+        ISHIKO_CPP_ROOT points at the namespace directory and each repository
+        sits directly below it under its own name.
+
+        Parameters
+        ----------
+        makefile_path : str, optional
+            The path of the makefile relative to the root of the extracted
+            repository. None if the project only needs to be downloaded.
+
+        Raises
+        ------
+        RuntimeError
+            If the repository is not a repository of the ishiko-cpp namespace.
+        """
+
+        namespace, separator, repository_name = repository.partition("_")
+        if (separator != "_") or (namespace != "ishiko-cpp"):
+            exception_text = repository + " is not a repository of the " + \
+                             "ishiko-cpp namespace"
+            raise RuntimeError(exception_text)
+        namespace_path = self.config.build_dir + "/ishiko/cpp"
+        extract_path = namespace_path + "/" + repository_name
+        if makefile_path is not None:
+            makefile_path = extract_path + "/" + makefile_path
+        self.projects.append(Project(name, repository, "main",
+                                     self.config.downloads_dir,
+                                     extract_path, "ISHIKO_CPP_ROOT",
+                                     namespace_path,
+                                     makefile_path, use_codesmithy_make))
 
     def _add_diplodocusdb_project(self,
                                   name: str,
