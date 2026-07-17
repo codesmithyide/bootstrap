@@ -357,6 +357,11 @@ class Projects:
             "build-files/$(compiler_short_name)/IshikoText.sln",
             False)
         self._add_ishiko_project(
+            "Ishiko/Time",
+            "ishiko-cpp_time",
+            "build-files/$(compiler_short_name)/IshikoTime.sln",
+            False)
+        self._add_ishiko_project(
             "Ishiko/Process",
             "ishiko-cpp_process",
             "build-files/$(compiler_short_name)/IshikoProcess.sln",
@@ -384,30 +389,24 @@ class Projects:
         self._add_diplodocusdb_project(
             "DiplodocusDB/Core",
             "diplodocusdb_core",
-            "DiplodocusDB/Core",
-            "DIPLODOCUSDB",
-            "Makefiles/$(compiler_short_name)/DiplodocusDBCore.sln",
+            "build-files/$(compiler_short_name)/DiplodocusDBCore.sln",
             False)
         self._add_diplodocusdb_project(
             "DiplodocusDB/PhysicalStorage",
             "diplodocusdb_physical-storage",
-            "DiplodocusDB/PhysicalStorage",
-            "DIPLODOCUSDB",
-            "Makefiles/$(compiler_short_name)/DiplodocusTreeDBCore.sln",
+            "build-files/$(compiler_short_name)/DiplodocusDBPhysicalStorage.sln",
             False)
         self._add_diplodocusdb_project(
             "DiplodocusDB/EmbeddedDocumentDB/StorageEngine",
             "diplodocusdb_embedded-document-db",
-            "DiplodocusDB/EmbeddedDocumentDB",
-            "DIPLODOCUSDB",
-            "Makefiles/$(compiler_short_name)/DiplodocusXMLTreeDB.sln",
+            "storage-engine/build-files/$(compiler_short_name)/"
+            "DiplodocusEmbeddedDocumentDBStorageEngine.sln",
             False)
         self._add_diplodocusdb_project(
             "DiplodocusDB/EmbeddedDocumentDB/Database",
             "diplodocusdb_embedded-document-db",
-            "DiplodocusDB/EmbeddedDocumentDB",
-            "DIPLODOCUSDB",
-            "Makefiles/$(compiler_short_name)/DiplodocusXMLTreeDB.sln",
+            "database/build-files/$(compiler_short_name)/"
+            "DiplodocusEmbeddedDocumentDB.sln",
             False)
         self._add_codesmithyide_project(
             "CodeSmithyIDE/VersionControl/Git",
@@ -644,12 +643,47 @@ class Projects:
     def _add_diplodocusdb_project(self,
                                   name: str,
                                   repository: str,
-                                  extract_subdir: str,
-                                  env_var_name: str,
                                   makefile_path: Optional[str],
                                   use_codesmithy_make: bool):
-        self._add_project(name, repository, extract_subdir, env_var_name,
-                          makefile_path, use_codesmithy_make)
+        """Adds a project from the diplodocusdb namespace.
+
+        The install location is derived from the repository name: the '_'
+        separates the namespace from the repository name, so diplodocusdb_core
+        is the core repository of the diplodocusdb namespace and is unzipped at
+        <build_dir>/diplodocusdb/core.
+
+        This layout is the one the projects expect: they refer to their
+        dependencies as $(DIPLODOCUSDB_ROOT)/<repository name>, so
+        DIPLODOCUSDB_ROOT points at the namespace directory and each repository
+        sits directly below it under its own name.
+
+        Parameters
+        ----------
+        makefile_path : str, optional
+            The path of the makefile relative to the root of the extracted
+            repository. None if the project only needs to be downloaded.
+
+        Raises
+        ------
+        RuntimeError
+            If the repository is not a repository of the diplodocusdb
+            namespace.
+        """
+
+        namespace, separator, repository_name = repository.partition("_")
+        if (separator != "_") or (namespace != "diplodocusdb"):
+            exception_text = repository + " is not a repository of the " + \
+                             "diplodocusdb namespace"
+            raise RuntimeError(exception_text)
+        namespace_path = self.config.build_dir + "/diplodocusdb"
+        extract_path = namespace_path + "/" + repository_name
+        if makefile_path is not None:
+            makefile_path = extract_path + "/" + makefile_path
+        self.projects.append(Project(name, repository, "main",
+                                     self.config.downloads_dir,
+                                     extract_path, "DIPLODOCUSDB_ROOT",
+                                     namespace_path,
+                                     makefile_path, use_codesmithy_make))
 
     def _add_codesmithyide_project(self,
                                    name: str,
