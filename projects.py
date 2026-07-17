@@ -301,7 +301,7 @@ class Projects:
         self._add_ishiko_project(
             "Ishiko/Workflows",
             "ishiko-cpp_workflows",
-            "build-files/$(compiler_short_name)/IshikoTasks.sln",
+            "build-files/$(compiler_short_name)/IshikoWorkflows.sln",
             False)
         self._add_diplodocusdb_project(
             "DiplodocusDB/Core",
