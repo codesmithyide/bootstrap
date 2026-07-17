@@ -1,6 +1,7 @@
 from typing import Optional
 import os
 import re
+import shutil
 import subprocess
 from download import Downloader
 from download import Download
@@ -173,6 +174,66 @@ class Project:
         return result
 
 
+class fmtProject(Project):
+    """The fmt project.
+
+    fmt is built with CMake but it doesn't put the library where the projects
+    that depend on it expect to find it, so a copy is made once the build is
+    done. The headers need no such treatment, the repository already has them
+    in the include directory at its root.
+    """
+
+    def __init__(self, download_path, build_dir, target):
+        super().__init__("fmt", "ishiko-cpp_fmt", "master", download_path,
+                         build_dir + "/fmt", "FMT_ROOT",
+                         build_dir + "/fmt",
+                         build_dir + "/fmt/CMakeLists.txt", False)
+        self.target = target
+
+    def build(self, build_tools: BuildTools,
+              parent_build_configuration: BuildConfiguration,
+              input: Input,
+              output: Output):
+        super().build(build_tools, parent_build_configuration, input, output)
+        self._install_library(parent_build_configuration)
+
+    def _install_library(self, build_configuration: BuildConfiguration):
+        """Copies the library built by CMake to its expected location.
+
+        The build is done in place so CMake puts the library in a directory
+        named after the configuration. The projects that depend on fmt look for
+        it in the lib directory at the root of the repository and under a name
+        that follows the Boost naming convention, so it is copied there and
+        renamed. For instance Debug/fmtd.lib becomes lib/fmt-d-x64.lib.
+
+        Parameters
+        ----------
+        build_configuration : BuildConfiguration
+            The build configuration. It selects the directory CMake put the
+            library in and whether this is a debug build.
+        """
+
+        debug = (build_configuration.cmake_configuration == "Debug")
+        # CMake appends a "d" to the name of the library in debug builds, the
+        # Boost naming convention uses a "-d" suffix instead.
+        source_path = self.extract_path + "/" + \
+                      build_configuration.cmake_configuration + "/fmt" + \
+                      ("d" if debug else "") + ".lib"
+        # The Boost naming convention identifies the architecture with a letter
+        # for the architecture family followed by the address model, so a 64-bit
+        # x86 build is x64 and a 32-bit one is x32.
+        architecture_tag = "x" + self.target.architecture
+        destination_dir = self.extract_path + "/lib"
+        destination_path = destination_dir + "/fmt" + \
+                           ("-d" if debug else "") + "-" + \
+                           architecture_tag + ".lib"
+        if not os.path.exists(source_path):
+            raise RuntimeError(source_path + " not found")
+        os.makedirs(destination_dir, exist_ok=True)
+        shutil.copyfile(source_path, destination_path)
+        print("    Installed " + destination_path)
+
+
 class libgit2Project(Project):
     def __init__(self, download_path, build_dir, target):
         super().__init__("libgit2", "libgit2_libgit2", "main", download_path,
@@ -252,6 +313,8 @@ class Projects:
         self.config = config
         self.downloader = Downloader()
         self.projects = []
+        self.projects.append(fmtProject(config.downloads_dir,
+                                        config.build_dir, target))
         self.projects.append(Project(
             "pugixml",
             "ishiko-cpp_pugixml",
@@ -274,9 +337,24 @@ class Projects:
             "build-files/$(compiler_short_name)/IshikoErrors.sln",
             False)
         self._add_ishiko_project(
+            "Ishiko/Memory",
+            "ishiko-cpp_memory",
+            "build-files/$(compiler_short_name)/IshikoMemory.sln",
+            False)
+        self._add_ishiko_project(
             "Ishiko/Types",
             "ishiko-cpp_types",
             "build-files/$(compiler_short_name)/IshikoTypes.sln",
+            False)
+        self._add_ishiko_project(
+            "Ishiko/Collections",
+            "ishiko-cpp_collections",
+            "build-files/$(compiler_short_name)/IshikoCollections.sln",
+            False)
+        self._add_ishiko_project(
+            "Ishiko/Text",
+            "ishiko-cpp_text",
+            "build-files/$(compiler_short_name)/IshikoText.sln",
             False)
         self._add_ishiko_project(
             "Ishiko/Process",
@@ -284,9 +362,9 @@ class Projects:
             "build-files/$(compiler_short_name)/IshikoProcess.sln",
             False)
         self._add_ishiko_project(
-            "Ishiko/Collections",
-            "ishiko-cpp_collections",
-            "build-files/$(compiler_short_name)/IshikoCollections.sln",
+            "Ishiko/IO",
+            "ishiko-cpp_io",
+            "build-files/$(compiler_short_name)/IshikoIO.sln",
             False)
         self._add_ishiko_project(
             "Ishiko/FileSystem",
