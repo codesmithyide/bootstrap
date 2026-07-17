@@ -14,8 +14,9 @@ from build import BuildConfiguration
 class CMake:
     """Wrapper used to invoke CMake."""
 
-    def __init__(self, generator, config):
+    def __init__(self, generator, architecture, config):
         self.generator = generator
+        self.architecture = architecture
         self.config = config
 
     def install(self, target: Target, state: State, output: Output):
@@ -63,7 +64,10 @@ class CMake:
         try:
             with open(logfile, "w") as output_file:
                 cmake_path = previous_working_dir + "/" + self.path
-                generation_args = [cmake_path, "-G", self.generator, "."]
+                generation_args = [cmake_path, "-G", self.generator]
+                if self.architecture:
+                    generation_args.extend(["-A", self.architecture])
+                generation_args.append(".")
                 generation_args.extend(build_configuration.cmake_generation_args)
                 print("    Executing " + " ".join(generation_args))
                 subprocess.check_call(generation_args, stdout=output_file)
@@ -96,10 +100,11 @@ class CMake:
             zip_ref.close()
         elif target.platform == "Linux":
             download_url = "https://github.com/codesmithyide/CMake/archive/main.zip"
-            download = Download("CMake", download_url, self.config.build_dir,
-                                self.config.downloads_dir, "main")
+            download = Download("CMake", download_url,
+                                self.config.downloads_dir, "main",
+                                [self.config.build_dir + "/CMake"])
             download.download(None)
-            download.unzip(None)
+            download.unzip()
             previous_working_dir = os.getcwd()
             os.chdir(self.config.build_dir + "/CMake")
             try:
