@@ -1,6 +1,7 @@
 from typing import Optional
 import os
 import re
+import shutil
 import subprocess
 from download import Downloader
 from download import Download
@@ -173,6 +174,66 @@ class Project:
         return result
 
 
+class fmtProject(Project):
+    """The fmt project.
+
+    fmt is built with CMake but it doesn't put the library where the projects
+    that depend on it expect to find it, so a copy is made once the build is
+    done. The headers need no such treatment, the repository already has them
+    in the include directory at its root.
+    """
+
+    def __init__(self, download_path, build_dir, target):
+        super().__init__("fmt", "ishiko-cpp_fmt", "master", download_path,
+                         build_dir + "/fmt", "FMT_ROOT",
+                         build_dir + "/fmt",
+                         build_dir + "/fmt/CMakeLists.txt", False)
+        self.target = target
+
+    def build(self, build_tools: BuildTools,
+              parent_build_configuration: BuildConfiguration,
+              input: Input,
+              output: Output):
+        super().build(build_tools, parent_build_configuration, input, output)
+        self._install_library(parent_build_configuration)
+
+    def _install_library(self, build_configuration: BuildConfiguration):
+        """Copies the library built by CMake to its expected location.
+
+        The build is done in place so CMake puts the library in a directory
+        named after the configuration. The projects that depend on fmt look for
+        it in the lib directory at the root of the repository and under a name
+        that follows the Boost naming convention, so it is copied there and
+        renamed. For instance Debug/fmtd.lib becomes lib/fmt-d-x64.lib.
+
+        Parameters
+        ----------
+        build_configuration : BuildConfiguration
+            The build configuration. It selects the directory CMake put the
+            library in and whether this is a debug build.
+        """
+
+        debug = (build_configuration.cmake_configuration == "Debug")
+        # CMake appends a "d" to the name of the library in debug builds, the
+        # Boost naming convention uses a "-d" suffix instead.
+        source_path = self.extract_path + "/" + \
+                      build_configuration.cmake_configuration + "/fmt" + \
+                      ("d" if debug else "") + ".lib"
+        # The Boost naming convention identifies the architecture with a letter
+        # for the architecture family followed by the address model, so a 64-bit
+        # x86 build is x64 and a 32-bit one is x32.
+        architecture_tag = "x" + self.target.architecture
+        destination_dir = self.extract_path + "/lib"
+        destination_path = destination_dir + "/fmt" + \
+                           ("-d" if debug else "") + "-" + \
+                           architecture_tag + ".lib"
+        if not os.path.exists(source_path):
+            raise RuntimeError(source_path + " not found")
+        os.makedirs(destination_dir, exist_ok=True)
+        shutil.copyfile(source_path, destination_path)
+        print("    Installed " + destination_path)
+
+
 class libgit2Project(Project):
     def __init__(self, download_path, build_dir, target):
         super().__init__("libgit2", "libgit2_libgit2", "main", download_path,
@@ -252,13 +313,15 @@ class Projects:
         self.config = config
         self.downloader = Downloader()
         self.projects = []
+        self.projects.append(fmtProject(config.downloads_dir,
+                                        config.build_dir, target))
         self.projects.append(Project(
             "pugixml",
             "ishiko-cpp_pugixml",
             "master",
             config.downloads_dir,
             config.build_dir + "/pugixml",
-            "PUGIXML",
+            "PUGIXML_ROOT",
             config.build_dir + "/pugixml",
             None,
             False))
@@ -274,9 +337,29 @@ class Projects:
             "build-files/$(compiler_short_name)/IshikoErrors.sln",
             False)
         self._add_ishiko_project(
+            "Ishiko/Memory",
+            "ishiko-cpp_memory",
+            "build-files/$(compiler_short_name)/IshikoMemory.sln",
+            False)
+        self._add_ishiko_project(
             "Ishiko/Types",
             "ishiko-cpp_types",
             "build-files/$(compiler_short_name)/IshikoTypes.sln",
+            False)
+        self._add_ishiko_project(
+            "Ishiko/Collections",
+            "ishiko-cpp_collections",
+            "build-files/$(compiler_short_name)/IshikoCollections.sln",
+            False)
+        self._add_ishiko_project(
+            "Ishiko/Text",
+            "ishiko-cpp_text",
+            "build-files/$(compiler_short_name)/IshikoText.sln",
+            False)
+        self._add_ishiko_project(
+            "Ishiko/Time",
+            "ishiko-cpp_time",
+            "build-files/$(compiler_short_name)/IshikoTime.sln",
             False)
         self._add_ishiko_project(
             "Ishiko/Process",
@@ -284,9 +367,9 @@ class Projects:
             "build-files/$(compiler_short_name)/IshikoProcess.sln",
             False)
         self._add_ishiko_project(
-            "Ishiko/Collections",
-            "ishiko-cpp_collections",
-            "build-files/$(compiler_short_name)/IshikoCollections.sln",
+            "Ishiko/IO",
+            "ishiko-cpp_io",
+            "build-files/$(compiler_short_name)/IshikoIO.sln",
             False)
         self._add_ishiko_project(
             "Ishiko/FileSystem",
@@ -301,63 +384,49 @@ class Projects:
         self._add_ishiko_project(
             "Ishiko/Workflows",
             "ishiko-cpp_workflows",
-            "build-files/$(compiler_short_name)/IshikoTasks.sln",
+            "build-files/$(compiler_short_name)/IshikoWorkflows.sln",
             False)
         self._add_diplodocusdb_project(
             "DiplodocusDB/Core",
             "diplodocusdb_core",
-            "DiplodocusDB/Core",
-            "DIPLODOCUSDB",
-            "Makefiles/$(compiler_short_name)/DiplodocusDBCore.sln",
+            "build-files/$(compiler_short_name)/DiplodocusDBCore.sln",
             False)
         self._add_diplodocusdb_project(
             "DiplodocusDB/PhysicalStorage",
             "diplodocusdb_physical-storage",
-            "DiplodocusDB/PhysicalStorage",
-            "DIPLODOCUSDB",
-            "Makefiles/$(compiler_short_name)/DiplodocusTreeDBCore.sln",
+            "build-files/$(compiler_short_name)/DiplodocusDBPhysicalStorage.sln",
             False)
         self._add_diplodocusdb_project(
             "DiplodocusDB/EmbeddedDocumentDB/StorageEngine",
             "diplodocusdb_embedded-document-db",
-            "DiplodocusDB/EmbeddedDocumentDB",
-            "DIPLODOCUSDB",
-            "Makefiles/$(compiler_short_name)/DiplodocusXMLTreeDB.sln",
+            "storage-engine/build-files/$(compiler_short_name)/"
+            "DiplodocusEmbeddedDocumentDBStorageEngine.sln",
             False)
         self._add_diplodocusdb_project(
             "DiplodocusDB/EmbeddedDocumentDB/Database",
             "diplodocusdb_embedded-document-db",
-            "DiplodocusDB/EmbeddedDocumentDB",
-            "DIPLODOCUSDB",
-            "Makefiles/$(compiler_short_name)/DiplodocusXMLTreeDB.sln",
+            "database/build-files/$(compiler_short_name)/"
+            "DiplodocusEmbeddedDocumentDB.sln",
             False)
         self._add_codesmithyide_project(
             "CodeSmithyIDE/VersionControl/Git",
             "version-control",
-            "CodeSmithyIDE/VersionControl",
-            "CODESMITHYIDE",
-            "Makefiles/$(compiler_short_name)/CodeSmithyGit.sln",
+            "git/build-files/$(compiler_short_name)/CodeSmithyGit.sln",
             False)
         self._add_codesmithyide_project(
             "CodeSmithyIDE/BuildToolchains",
             "build-toolchains",
-            "CodeSmithyIDE/BuildToolchains",
-            "CODESMITHYIDE",
-            "Makefiles/$(compiler_short_name)/CodeSmithyBuildToolchains.sln",
+            "build-files/$(compiler_short_name)/CodeSmithyBuildToolchains.sln",
             False)
         self._add_codesmithyide_project(
             "CodeSmithyIDE/CodeSmithy/Core",
             "codesmithy",
-            "CodeSmithyIDE/CodeSmithy",
-            "CODESMITHYIDE",
-            "Makefiles/$(compiler_short_name)/CodeSmithyCore.sln",
+            "core/build-files/$(compiler_short_name)/CodeSmithyCore.sln",
             False)
         self._add_codesmithyide_project(
             "CodeSmithyIDE/CodeSmithy/CLI",
             "codesmithy",
-            "CodeSmithyIDE/CodeSmithy",
-            "CODESMITHYIDE",
-            "Makefiles/$(compiler_short_name)/CodeSmithyCLI.sln",
+            "cli/build-files/$(compiler_short_name)/CodeSmithyCLI.sln",
             False)
         self._add_ishiko_project(
             "Ishiko/TestFramework/Core",
@@ -377,52 +446,42 @@ class Projects:
         self._add_codesmithyide_project(
             "CodeSmithyIDE/CodeSmithy/UICore",
             "codesmithy",
-            "CodeSmithyIDE/CodeSmithy",
-            "CODESMITHYIDE",
-            "Makefiles/$(compiler_short_name)/CodeSmithyUICore.sln",
+            "UICore/Makefiles/$(compiler_short_name)/CodeSmithyUICore.sln",
             True)
         self.projects.append(wxWidgetsProject(config.downloads_dir, config.build_dir))
         self._add_codesmithyide_project(
             "CodeSmithyIDE/CodeSmithy/UIElements",
             "codesmithy",
-            "CodeSmithyIDE/CodeSmithy",
-            "CODESMITHYIDE",
-            "Makefiles/$(compiler_short_name)/CodeSmithyUIElements.sln",
+            "UIElements/Makefiles/$(compiler_short_name)/CodeSmithyUIElements.sln",
             True)
         self._add_codesmithyide_project(
             "CodeSmithyIDE/CodeSmithy/UIImplementation",
             "codesmithy",
-            "CodeSmithyIDE/CodeSmithy",
-            "CODESMITHYIDE",
-            "Makefiles/$(compiler_short_name)/CodeSmithyUIImplementation.sln",
+            "UIImplementation/Makefiles/$(compiler_short_name)/"
+            "CodeSmithyUIImplementation.sln",
             True)
         self._add_codesmithyide_project(
             "CodeSmithyIDE/CodeSmithy/UI",
             "codesmithy",
-            "CodeSmithyIDE/CodeSmithy",
-            "CODESMITHYIDE",
-            "Makefiles/$(compiler_short_name)/CodeSmithy.sln",
+            "UI/Makefiles/$(compiler_short_name)/CodeSmithy.sln",
             True)
         self._add_codesmithyide_project(
             "CodeSmithyIDE/CodeSmithy/Tests/Core",
             "codesmithy",
-            "CodeSmithyIDE/CodeSmithy",
-            "CODESMITHYIDE",
-            "Makefiles/$(compiler_short_name)/CodeSmithyCoreTests.sln",
+            "core/tests/build-files/$(compiler_short_name)/"
+            "CodeSmithyCoreTests.sln",
             True)
         self._add_codesmithyide_project(
             "CodeSmithyIDE/CodeSmithy/Tests/Make",
             "codesmithy",
-            "CodeSmithyIDE/CodeSmithy",
-            "CODESMITHYIDE",
-            "Makefiles/$(compiler_short_name)/CodeSmithyMakeTests.sln",
+            "Tests/Make/Makefiles/$(compiler_short_name)/"
+            "CodeSmithyMakeTests.sln",
             True)
         self._add_codesmithyide_project(
             "CodeSmithyIDE/CodeSmithy/Tests/UICore",
             "codesmithy",
-            "CodeSmithyIDE/CodeSmithy",
-            "CODESMITHYIDE",
-            "Makefiles/$(compiler_short_name)/CodeSmithyUICoreTests.sln",
+            "Tests/UICore/Makefiles/$(compiler_short_name)/"
+            "CodeSmithyUICoreTests.sln",
             True)
         self.tests = []
         self.tests.append(Test("CodeSmithyIDE/CodeSmithy/Tests/Core",
@@ -498,26 +557,6 @@ class Projects:
                                                        architecture_dir_name)
                 raise RuntimeError(test.project_name + " tests failed.")
 
-    def _add_project(self,
-                     name: str,
-                     repository: str,
-                     extract_subdir: str,
-                     env_var_name: str,
-                     makefile_path: Optional[str],
-                     use_codesmithy_make: bool):
-        # The archive is unzipped at build_dir/extract_subdir (shared by every
-        # project that comes from the same repository). The makefile still
-        # lives under the project's own name inside that tree.
-        extract_path = self.config.build_dir + "/" + extract_subdir
-        env_var_value = self.config.build_dir + "/" + name.split("/")[0]
-        if makefile_path is not None:
-            makefile_path = self.config.build_dir + "/" + name + "/" + \
-                            makefile_path
-        self.projects.append(Project(name, repository, "main",
-                                     self.config.downloads_dir,
-                                     extract_path, env_var_name, env_var_value,
-                                     makefile_path, use_codesmithy_make))
-
     def _add_ishiko_project(self,
                             name: str,
                             repository: str,
@@ -566,22 +605,92 @@ class Projects:
     def _add_diplodocusdb_project(self,
                                   name: str,
                                   repository: str,
-                                  extract_subdir: str,
-                                  env_var_name: str,
                                   makefile_path: Optional[str],
                                   use_codesmithy_make: bool):
-        self._add_project(name, repository, extract_subdir, env_var_name,
-                          makefile_path, use_codesmithy_make)
+        """Adds a project from the diplodocusdb namespace.
+
+        The install location is derived from the repository name: the '_'
+        separates the namespace from the repository name, so diplodocusdb_core
+        is the core repository of the diplodocusdb namespace and is unzipped at
+        <build_dir>/diplodocusdb/core.
+
+        This layout is the one the projects expect: they refer to their
+        dependencies as $(DIPLODOCUSDB_ROOT)/<repository name>, so
+        DIPLODOCUSDB_ROOT points at the namespace directory and each repository
+        sits directly below it under its own name.
+
+        Parameters
+        ----------
+        makefile_path : str, optional
+            The path of the makefile relative to the root of the extracted
+            repository. None if the project only needs to be downloaded.
+
+        Raises
+        ------
+        RuntimeError
+            If the repository is not a repository of the diplodocusdb
+            namespace.
+        """
+
+        namespace, separator, repository_name = repository.partition("_")
+        if (separator != "_") or (namespace != "diplodocusdb"):
+            exception_text = repository + " is not a repository of the " + \
+                             "diplodocusdb namespace"
+            raise RuntimeError(exception_text)
+        namespace_path = self.config.build_dir + "/diplodocusdb"
+        extract_path = namespace_path + "/" + repository_name
+        if makefile_path is not None:
+            makefile_path = extract_path + "/" + makefile_path
+        self.projects.append(Project(name, repository, "main",
+                                     self.config.downloads_dir,
+                                     extract_path, "DIPLODOCUSDB_ROOT",
+                                     namespace_path,
+                                     makefile_path, use_codesmithy_make))
 
     def _add_codesmithyide_project(self,
                                    name: str,
                                    repository: str,
-                                   extract_subdir: str,
-                                   env_var_name: str,
                                    makefile_path: Optional[str],
                                    use_codesmithy_make: bool):
-        self._add_project(name, repository, extract_subdir, env_var_name,
-                          makefile_path, use_codesmithy_make)
+        """Adds a project from the codesmithyide namespace.
+
+        Unlike the repositories of the other namespaces the ones of the
+        codesmithyide namespace are not prefixed with the name of their
+        namespace, so there is nothing to strip and the repository name is used
+        as-is. The codesmithy repository is unzipped at
+        <build_dir>/codesmithyide/codesmithy.
+
+        This layout is the one the projects expect: they refer to their
+        dependencies as $(CODESMITHYIDE_ROOT)/<repository name>, so
+        CODESMITHYIDE_ROOT points at the namespace directory and each
+        repository sits directly below it under its own name.
+
+        Parameters
+        ----------
+        makefile_path : str, optional
+            The path of the makefile relative to the root of the extracted
+            repository. None if the project only needs to be downloaded.
+
+        Raises
+        ------
+        RuntimeError
+            If the repository is not a repository of the codesmithyide
+            namespace.
+        """
+
+        if "_" in repository:
+            exception_text = repository + " is not a repository of the " + \
+                             "codesmithyide namespace"
+            raise RuntimeError(exception_text)
+        namespace_path = self.config.build_dir + "/codesmithyide"
+        extract_path = namespace_path + "/" + repository
+        if makefile_path is not None:
+            makefile_path = extract_path + "/" + makefile_path
+        self.projects.append(Project(name, repository, "main",
+                                     self.config.downloads_dir,
+                                     extract_path, "CODESMITHYIDE_ROOT",
+                                     namespace_path,
+                                     makefile_path, use_codesmithy_make))
 
     def _init_downloader(self):
         for project in self.projects:
