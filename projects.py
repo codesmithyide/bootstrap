@@ -1,8 +1,8 @@
 from typing import Optional
 import os
 import re
+import shutil
 import subprocess
-from pathlib import Path
 from download import Downloader
 from download import Download
 from input import Input
@@ -15,42 +15,51 @@ class Project:
 
     def __init__(self,
                  name: str,
-                 env_var: str,
+                 repository: str,
+                 branch: str,
+                 download_path: str,
+                 extract_path: str,
+                 env_var_name: str,
+                 env_var_value: str,
                  makefile_path: Optional[str],
                  use_codesmithy_make: bool):
         """
         Parameters
         ----------
         name : str
-            The name of the project. The location of the package to download is
-            derived from the name.
-        env_var : str
+            The name of the project.
+        repository : str
+            The name of the source repository. Combined with the branch, this
+            identifies the source to download.
+        branch : str
+            The name of the branch to download.
+        download_path : str
+            The directory where downloaded packages are cached.
+        extract_path : str
+            The exact directory where the project is unzipped. It is used as-is,
+            no path manipulation is done on it.
+        env_var_name : str
             The name of the environment variable that will point to the
-            location of this project. The location is derived from the name.
+            location of this project.
+        env_var_value : str
+            The directory the environment variable points to.
         makefile_path : str, optional
-            The path of the makefile used to build the project. The path is
-            relative to the directory where the project is unzipped. None if
+            The exact path of the makefile used to build the project. None if
             the project only needs to be downloaded.
         use_codesmithy_make : bool
             Whether CodeSmithyMake should be used to build the project.
         """
 
         self.name = name
-        self.env_var = env_var
-        if makefile_path is None:
-            self.makefile_path = None
-        else:
-            self.makefile_path = "Build/" + name + "/" + makefile_path
+        self.repository = repository
+        self.branch = branch
+        self.download_path = download_path
+        self.extract_path = extract_path
+        self.env_var_name = env_var_name
+        self.env_var_value = env_var_value
+        self.makefile_path = makefile_path
         self.use_codesmithy_make = use_codesmithy_make
         self.cmake_generation_args = []
-
-        split_name = name.split("/")
-
-        # The installation directory is derived from the project name
-        if len(split_name) == 1:
-            self.install_dir = split_name[0]
-        else:
-            self.install_dir = split_name[0] + "/" + split_name[1]
 
         self.built = False
 
@@ -66,18 +75,15 @@ class Project:
 
         downloader = Downloader()
 
-        # The download URL is derived from the project name
-        split_name = self.name.split("/")
-        download = None
-        if len(split_name) == 1:
-            download_url = "https://github.com/CodeSmithyIDE/" + \
-                           split_name[0] + "/archive/master.zip"
-            download = Download(split_name[0], download_url, "Build")
-        else:
-            download_url = "https://github.com/CodeSmithyIDE/" + \
-                           split_name[1] + "/archive/master.zip"
-            download = Download(split_name[1], download_url,
-                                "Build/" + split_name[0])
+        download_url = "https://github.com/codesmithyide/" + \
+                       self.repository + "/archive/" + self.branch + ".zip"
+
+        # The archive is installed at the exact extract_path. Projects that
+        # share a repository are given the same extract_path, so their
+        # downloads are identical and get deduplicated by Downloader.merge.
+        download = Download(self.repository, download_url,
+                            self.download_path, self.branch,
+                            [self.extract_path])
         downloader.downloads.append(download)
 
         return downloader
@@ -94,11 +100,7 @@ class Project:
             The downloader that was used to download the package(s).
         """
 
-        split_name = self.name.split("/")
-        if len(split_name) == 1:
-            downloader.unzip(split_name[0])
-        else:
-            downloader.unzip(split_name[1])
+        downloader.unzip(self.repository)
 
     def build(self, build_tools: BuildTools,
               parent_build_configuration: BuildConfiguration,
@@ -172,53 +174,127 @@ class Project:
         return result
 
 
+class fmtProject(Project):
+    """The fmt project.
+
+    fmt is built with CMake but it doesn't put the library where the projects
+    that depend on it expect to find it, so a copy is made once the build is
+    done. The headers need no such treatment, the repository already has them
+    in the include directory at its root.
+    """
+
+    def __init__(self, download_path, build_dir, target):
+        super().__init__("fmt", "ishiko-cpp_fmt", "master", download_path,
+                         build_dir + "/fmt", "FMT_ROOT",
+                         build_dir + "/fmt",
+                         build_dir + "/fmt/CMakeLists.txt", False)
+        self.target = target
+
+    def build(self, build_tools: BuildTools,
+              parent_build_configuration: BuildConfiguration,
+              input: Input,
+              output: Output):
+        super().build(build_tools, parent_build_configuration, input, output)
+        self._install_library(parent_build_configuration)
+
+    def _install_library(self, build_configuration: BuildConfiguration):
+        """Copies the library built by CMake to its expected location.
+
+        The build is done in place so CMake puts the library in a directory
+        named after the configuration. The projects that depend on fmt look for
+        it in the lib directory at the root of the repository and under a name
+        that follows the Boost naming convention, so it is copied there and
+        renamed. For instance Debug/fmtd.lib becomes lib/fmt-d-x64.lib.
+
+        Parameters
+        ----------
+        build_configuration : BuildConfiguration
+            The build configuration. It selects the directory CMake put the
+            library in and whether this is a debug build.
+        """
+
+        debug = (build_configuration.cmake_configuration == "Debug")
+        # CMake appends a "d" to the name of the library in debug builds, the
+        # Boost naming convention uses a "-d" suffix instead.
+        source_path = self.extract_path + "/" + \
+                      build_configuration.cmake_configuration + "/fmt" + \
+                      ("d" if debug else "") + ".lib"
+        # The Boost naming convention identifies the architecture with a letter
+        # for the architecture family followed by the address model, so a 64-bit
+        # x86 build is x64 and a 32-bit one is x32.
+        architecture_tag = "x" + self.target.architecture
+        destination_dir = self.extract_path + "/lib"
+        destination_path = destination_dir + "/fmt" + \
+                           ("-d" if debug else "") + "-" + \
+                           architecture_tag + ".lib"
+        if not os.path.exists(source_path):
+            raise RuntimeError(source_path + " not found")
+        os.makedirs(destination_dir, exist_ok=True)
+        shutil.copyfile(source_path, destination_path)
+        print("    Installed " + destination_path)
+
+
 class libgit2Project(Project):
-    def __init__(self, target):
-        super().__init__("libgit2", "LIBGIT2", "$(arch)/CMakeLists.txt", False)
+    def __init__(self, download_path, build_dir, target):
+        super().__init__("libgit2", "libgit2_libgit2", "main", download_path,
+                         build_dir + "/libgit2", "LIBGIT2",
+                         build_dir + "/libgit2",
+                         build_dir + "/libgit2/$(arch)/CMakeLists.txt", False)
         self.target = target
         self.cmake_generation_args = ["-DBUILD_SHARED_LIBS=OFF",
                                       "-DSTATIC_CRT=OFF"]
 
-    def unzip(self, downloader):
+    def create_downloader(self):
+        # On Windows libgit2 is built separately for each architecture, so the
+        # same download is installed into both a Win32 and an x64 directory.
         if self.target.platform == "Linux":
-            super().unzip(downloader)
-        else:
-            Path("Build/libgit2").mkdir(exist_ok=True)
-            downloader.unzip("libgit2",
-                             ["Build/libgit2/Win32", "Build/libgit2/x64"])
+            return super().create_downloader()
+        download_url = "https://github.com/codesmithyide/" + \
+                       self.repository + "/archive/" + self.branch + ".zip"
+        downloader = Downloader()
+        downloader.downloads.append(
+            Download(self.repository, download_url,
+                     self.download_path, self.branch,
+                     [self.extract_path + "/Win32", self.extract_path + "/x64"]))
+        return downloader
 
 class wxWidgetsProject(Project):
-    def __init__(self):
-        super().__init__("wxWidgets", "WXWIN",
-                         "build/msw/wx_$(compiler_short_name).sln", False)
+    def __init__(self, download_path, build_dir):
+        super().__init__("wxWidgets", "wxWidgets", "master", download_path,
+                         build_dir + "/wxWidgets", "WXWIN",
+                         build_dir + "/wxWidgets",
+                         build_dir + "/wxWidgets/build/msw/wx_$(compiler_short_name).sln",
+                         False)
 
     def create_downloader(self):
         downloader = super().create_downloader()
         modules = ["zlib", "libpng", "libexpat", "libjpeg-turbo", "libtiff"]
-        url_prefix = "https://github.com/CodeSmithyIDE/"
+        url_prefix = "https://github.com/codesmithyide/"
         url_suffix = "/archive/wx.zip"
+        src = self.extract_path + "/src"
         for module in modules:
             downloader.downloads.append(
                 Download(module, url_prefix + module + url_suffix,
-                         "Build/wxWidgets/src", "wx"))
+                         self.download_path, "wx",
+                         [src + "/" + module]))
         return downloader
 
     def unzip(self, downloader):
         super().unzip(downloader)
+        src = self.extract_path + "/src"
         downloader.unzip("zlib")
         downloader.unzip("libpng")
-        os.rmdir("Build/wxWidgets/src/png")
-        os.rename("Build/wxWidgets/src/libpng", "Build/wxWidgets/src/png")
+        os.rmdir(src + "/png")
+        os.rename(src + "/libpng", src + "/png")
         downloader.unzip("libexpat")
-        os.rmdir("Build/wxWidgets/src/expat")
-        os.rename("Build/wxWidgets/src/libexpat", "Build/wxWidgets/src/expat")
+        os.rmdir(src + "/expat")
+        os.rename(src + "/libexpat", src + "/expat")
         downloader.unzip("libjpeg-turbo")
-        os.rmdir("Build/wxWidgets/src/jpeg")
-        os.rename("Build/wxWidgets/src/libjpeg-turbo",
-                  "Build/wxWidgets/src/jpeg")
+        os.rmdir(src + "/jpeg")
+        os.rename(src + "/libjpeg-turbo", src + "/jpeg")
         downloader.unzip("libtiff")
-        os.rmdir("Build/wxWidgets/src/tiff")
-        os.rename("Build/wxWidgets/src/libtiff", "Build/wxWidgets/src/tiff")
+        os.rmdir(src + "/tiff")
+        os.rename(src + "/libtiff", src + "/tiff")
 
     def _resolve_makefile_path(self, compiler, architecture_dir_name):
         return re.sub(r"\$\(compiler_short_name\)",
@@ -233,141 +309,180 @@ class Test:
 
 
 class Projects:
-    def __init__(self, target):
+    def __init__(self, target, config):
+        self.config = config
         self.downloader = Downloader()
         self.projects = []
+        self.projects.append(fmtProject(config.downloads_dir,
+                                        config.build_dir, target))
         self.projects.append(Project(
             "pugixml",
-            "PUGIXML",
+            "ishiko-cpp_pugixml",
+            "master",
+            config.downloads_dir,
+            config.build_dir + "/pugixml",
+            "PUGIXML_ROOT",
+            config.build_dir + "/pugixml",
             None,
             False))
-        self.projects.append(libgit2Project(target))
-        self.projects.append(Project(
-            "Ishiko/Platform",
-            "ISHIKO_CPP",
-            None,
-            False))
-        self.projects.append(Project(
+        self.projects.append(libgit2Project(config.downloads_dir, config.build_dir, target))
+        self._add_ishiko_project(
+            "Ishiko/BasePlatform",
+            "ishiko-cpp_base-platform",
+            "build-files/$(compiler_short_name)/IshikoBasePlatform.sln",
+            False)
+        self._add_ishiko_project(
             "Ishiko/Errors",
-            "ISHIKO_CPP",
-            "Makefiles/$(compiler_short_name)/IshikoErrors.sln",
-            False))
-        self.projects.append(Project(
+            "ishiko-cpp_errors",
+            "build-files/$(compiler_short_name)/IshikoErrors.sln",
+            False)
+        self._add_ishiko_project(
+            "Ishiko/Memory",
+            "ishiko-cpp_memory",
+            "build-files/$(compiler_short_name)/IshikoMemory.sln",
+            False)
+        self._add_ishiko_project(
             "Ishiko/Types",
-            "ISHIKO_CPP",
-            "Makefiles/$(compiler_short_name)/IshikoTypes.sln",
-            False))
-        self.projects.append(Project(
-            "Ishiko/Process",
-            "ISHIKO_CPP",
-            "Makefiles/$(compiler_short_name)/IshikoProcess.sln",
-            False))
-        self.projects.append(Project(
+            "ishiko-cpp_types",
+            "build-files/$(compiler_short_name)/IshikoTypes.sln",
+            False)
+        self._add_ishiko_project(
             "Ishiko/Collections",
-            "ISHIKO_CPP",
-            "Makefiles/$(compiler_short_name)/IshikoCollections.sln",
-            False))
-        self.projects.append(Project(
+            "ishiko-cpp_collections",
+            "build-files/$(compiler_short_name)/IshikoCollections.sln",
+            False)
+        self._add_ishiko_project(
+            "Ishiko/Text",
+            "ishiko-cpp_text",
+            "build-files/$(compiler_short_name)/IshikoText.sln",
+            False)
+        self._add_ishiko_project(
+            "Ishiko/Time",
+            "ishiko-cpp_time",
+            "build-files/$(compiler_short_name)/IshikoTime.sln",
+            False)
+        self._add_ishiko_project(
+            "Ishiko/Process",
+            "ishiko-cpp_process",
+            "build-files/$(compiler_short_name)/IshikoProcess.sln",
+            False)
+        self._add_ishiko_project(
+            "Ishiko/IO",
+            "ishiko-cpp_io",
+            "build-files/$(compiler_short_name)/IshikoIO.sln",
+            False)
+        self._add_ishiko_project(
             "Ishiko/FileSystem",
-            "ISHIKO_CPP",
-            "Makefiles/$(compiler_short_name)/IshikoFileSystem.sln",
-            False))
-        self.projects.append(Project(
+            "ishiko-cpp_filesystem",
+            "build-files/$(compiler_short_name)/IshikoFileSystem.sln",
+            False)
+        self._add_ishiko_project(
             "Ishiko/Terminal",
-            "ISHIKO_CPP",
-            "Makefiles/$(compiler_short_name)/IshikoTerminal.sln",
-            False))
-        self.projects.append(Project(
-            "Ishiko/Tasks",
-            "ISHIKO_CPP",
-            "Makefiles/$(compiler_short_name)/IshikoTasks.sln",
-            False))
-        self.projects.append(Project(
+            "ishiko-cpp_terminal",
+            "build-files/$(compiler_short_name)/IshikoTerminal.sln",
+            False)
+        self._add_ishiko_project(
+            "Ishiko/Workflows",
+            "ishiko-cpp_workflows",
+            "build-files/$(compiler_short_name)/IshikoWorkflows.sln",
+            False)
+        self._add_diplodocusdb_project(
             "DiplodocusDB/Core",
-            "DIPLODOCUSDB",
-            "Makefiles/$(compiler_short_name)/DiplodocusDBCore.sln",
-            False))
-        self.projects.append(Project(
-            "DiplodocusDB/TreeDB/Core",
-            "DIPLODOCUSDB",
-            "Makefiles/$(compiler_short_name)/DiplodocusTreeDBCore.sln",
-            False))
-        self.projects.append(Project(
-            "DiplodocusDB/TreeDB/XMLTreeDB",
-            "DIPLODOCUSDB",
-            "Makefiles/$(compiler_short_name)/DiplodocusXMLTreeDB.sln",
-            False))
-        self.projects.append(Project(
+            "diplodocusdb_core",
+            "build-files/$(compiler_short_name)/DiplodocusDBCore.sln",
+            False)
+        self._add_diplodocusdb_project(
+            "DiplodocusDB/PhysicalStorage",
+            "diplodocusdb_physical-storage",
+            "build-files/$(compiler_short_name)/DiplodocusDBPhysicalStorage.sln",
+            False)
+        self._add_diplodocusdb_project(
+            "DiplodocusDB/EmbeddedDocumentDB/StorageEngine",
+            "diplodocusdb_embedded-document-db",
+            "storage-engine/build-files/$(compiler_short_name)/"
+            "DiplodocusEmbeddedDocumentDBStorageEngine.sln",
+            False)
+        self._add_diplodocusdb_project(
+            "DiplodocusDB/EmbeddedDocumentDB/Database",
+            "diplodocusdb_embedded-document-db",
+            "database/build-files/$(compiler_short_name)/"
+            "DiplodocusEmbeddedDocumentDB.sln",
+            False)
+        self._add_codesmithyide_project(
             "CodeSmithyIDE/VersionControl/Git",
-            "CODESMITHYIDE",
-            "Makefiles/$(compiler_short_name)/CodeSmithyGit.sln",
-            False))
-        self.projects.append(Project(
+            "version-control",
+            "git/build-files/$(compiler_short_name)/CodeSmithyGit.sln",
+            False)
+        self._add_codesmithyide_project(
             "CodeSmithyIDE/BuildToolchains",
-            "CODESMITHYIDE",
-            "Makefiles/$(compiler_short_name)/CodeSmithyBuildToolchains.sln",
-            False))
-        self.projects.append(Project(
+            "build-toolchains",
+            "build-files/$(compiler_short_name)/CodeSmithyBuildToolchains.sln",
+            False)
+        self._add_codesmithyide_project(
             "CodeSmithyIDE/CodeSmithy/Core",
-            "CODESMITHYIDE",
-            "Makefiles/$(compiler_short_name)/CodeSmithyCore.sln",
-            False))
-        self.projects.append(Project(
+            "codesmithy",
+            "core/build-files/$(compiler_short_name)/CodeSmithyCore.sln",
+            False)
+        self._add_codesmithyide_project(
             "CodeSmithyIDE/CodeSmithy/CLI",
-            "CODESMITHYIDE",
-            "Makefiles/$(compiler_short_name)/CodeSmithyCLI.sln",
-            False))
-        self.projects.append(Project(
+            "codesmithy",
+            "cli/build-files/$(compiler_short_name)/CodeSmithyCLI.sln",
+            False)
+        self._add_ishiko_project(
             "Ishiko/TestFramework/Core",
-            "ISHIKO_CPP",
-            "Makefiles/$(compiler_short_name)/IshikoTestFrameworkCore.sln",
-            True))
-        self.projects.append(Project(
+            "ishiko-cpp_test-framework",
+            "core/build-files/$(compiler_short_name)/IshikoTestFrameworkCore.sln",
+            True)
+        self._add_ishiko_project(
             "Ishiko/WindowsRegistry",
-            "ISHIKO_CPP",
+            "ishiko-cpp_windows-registry",
             "Makefiles/$(compiler_short_name)/IshikoWindowsRegistry.sln",
-            True))
-        self.projects.append(Project(
+            True)
+        self._add_ishiko_project(
             "Ishiko/FileTypes",
-            "ISHIKO_CPP",
+            "ishiko-cpp_file-types",
             "Makefiles/$(compiler_short_name)/IshikoFileTypes.sln",
-            True))
-        self.projects.append(Project(
+            True)
+        self._add_codesmithyide_project(
             "CodeSmithyIDE/CodeSmithy/UICore",
-            "CODESMITHYIDE",
-            "Makefiles/$(compiler_short_name)/CodeSmithyUICore.sln",
-            True))
-        self.projects.append(wxWidgetsProject())
-        self.projects.append(Project(
+            "codesmithy",
+            "UICore/Makefiles/$(compiler_short_name)/CodeSmithyUICore.sln",
+            True)
+        self.projects.append(wxWidgetsProject(config.downloads_dir, config.build_dir))
+        self._add_codesmithyide_project(
             "CodeSmithyIDE/CodeSmithy/UIElements",
-            "CODESMITHYIDE",
-            "Makefiles/$(compiler_short_name)/CodeSmithyUIElements.sln",
-            True))
-        self.projects.append(Project(
+            "codesmithy",
+            "UIElements/Makefiles/$(compiler_short_name)/CodeSmithyUIElements.sln",
+            True)
+        self._add_codesmithyide_project(
             "CodeSmithyIDE/CodeSmithy/UIImplementation",
-            "CODESMITHYIDE",
-            "Makefiles/$(compiler_short_name)/CodeSmithyUIImplementation.sln",
-            True))
-        self.projects.append(Project(
+            "codesmithy",
+            "UIImplementation/Makefiles/$(compiler_short_name)/"
+            "CodeSmithyUIImplementation.sln",
+            True)
+        self._add_codesmithyide_project(
             "CodeSmithyIDE/CodeSmithy/UI",
-            "CODESMITHYIDE",
-            "Makefiles/$(compiler_short_name)/CodeSmithy.sln",
-            True))
-        self.projects.append(Project(
+            "codesmithy",
+            "UI/Makefiles/$(compiler_short_name)/CodeSmithy.sln",
+            True)
+        self._add_codesmithyide_project(
             "CodeSmithyIDE/CodeSmithy/Tests/Core",
-            "CODESMITHYIDE",
-            "Makefiles/$(compiler_short_name)/CodeSmithyCoreTests.sln",
-            True))
-        self.projects.append(Project(
+            "codesmithy",
+            "core/tests/build-files/$(compiler_short_name)/"
+            "CodeSmithyCoreTests.sln",
+            True)
+        self._add_codesmithyide_project(
             "CodeSmithyIDE/CodeSmithy/Tests/Make",
-            "CODESMITHYIDE",
-            "Makefiles/$(compiler_short_name)/CodeSmithyMakeTests.sln",
-            True))
-        self.projects.append(Project(
+            "codesmithy",
+            "Tests/Make/Makefiles/$(compiler_short_name)/"
+            "CodeSmithyMakeTests.sln",
+            True)
+        self._add_codesmithyide_project(
             "CodeSmithyIDE/CodeSmithy/Tests/UICore",
-            "CODESMITHYIDE",
-            "Makefiles/$(compiler_short_name)/CodeSmithyUICoreTests.sln",
-            True))
+            "codesmithy",
+            "Tests/UICore/Makefiles/$(compiler_short_name)/"
+            "CodeSmithyUICoreTests.sln",
+            True)
         self.tests = []
         self.tests.append(Test("CodeSmithyIDE/CodeSmithy/Tests/Core",
                                "CodeSmithyCoreTests.exe"))
@@ -384,16 +499,16 @@ class Projects:
         output.print_step_title("Setting environment variables")
         env = {}
         for project in self.projects:
-            value = os.getcwd() + "/Build/" + project.name.split("/")[0]
-            if project.env_var in env:
-                old_value = env[project.env_var]
+            value = os.getcwd() + "/" + project.env_var_value
+            if project.env_var_name in env:
+                old_value = env[project.env_var_name]
                 if (old_value != value):
                     exception_text = "Conflicting values for " + \
-                        "environment variable " + project.env_var + " (" + \
+                        "environment variable " + project.env_var_name + " (" + \
                         value + " vs " + old_value + ")"
                     raise RuntimeError(exception_text)
             else:
-                env[project.env_var] = value
+                env[project.env_var_name] = value
         for var_name in env:
             print("    " + var_name + ": " + env[var_name])
             os.environ[var_name] = env[var_name]
@@ -430,8 +545,8 @@ class Projects:
     def test(self, compiler, architecture_dir_name, input):
         for test in self.tests:
             # TODO
-            executable_path = "Build/" + test.project_name + \
-                              "/Makefiles/VC15/x64/Debug/" + test.executable
+            executable_path = self.config.build_dir + "/" + test.project_name + \
+                              "/Makefiles/vc15/x64/Debug/" + test.executable
             try:
                 subprocess.check_call([executable_path])
             except subprocess.CalledProcessError:
@@ -441,6 +556,141 @@ class Projects:
                     self.get(test.project_name).launch(compiler,
                                                        architecture_dir_name)
                 raise RuntimeError(test.project_name + " tests failed.")
+
+    def _add_ishiko_project(self,
+                            name: str,
+                            repository: str,
+                            makefile_path: Optional[str],
+                            use_codesmithy_make: bool):
+        """Adds a project from the ishiko-cpp namespace.
+
+        The install location is derived from the repository name: the '_'
+        separates the namespace from the repository name, so
+        ishiko-cpp_base-platform is the base-platform repository of the
+        ishiko-cpp namespace and is unzipped at
+        <build_dir>/ishiko/cpp/base-platform.
+
+        This layout is the one the projects expect: they refer to their
+        dependencies as $(ISHIKO_CPP_ROOT)/<repository name>, so
+        ISHIKO_CPP_ROOT points at the namespace directory and each repository
+        sits directly below it under its own name.
+
+        Parameters
+        ----------
+        makefile_path : str, optional
+            The path of the makefile relative to the root of the extracted
+            repository. None if the project only needs to be downloaded.
+
+        Raises
+        ------
+        RuntimeError
+            If the repository is not a repository of the ishiko-cpp namespace.
+        """
+
+        namespace, separator, repository_name = repository.partition("_")
+        if (separator != "_") or (namespace != "ishiko-cpp"):
+            exception_text = repository + " is not a repository of the " + \
+                             "ishiko-cpp namespace"
+            raise RuntimeError(exception_text)
+        namespace_path = self.config.build_dir + "/ishiko/cpp"
+        extract_path = namespace_path + "/" + repository_name
+        if makefile_path is not None:
+            makefile_path = extract_path + "/" + makefile_path
+        self.projects.append(Project(name, repository, "main",
+                                     self.config.downloads_dir,
+                                     extract_path, "ISHIKO_CPP_ROOT",
+                                     namespace_path,
+                                     makefile_path, use_codesmithy_make))
+
+    def _add_diplodocusdb_project(self,
+                                  name: str,
+                                  repository: str,
+                                  makefile_path: Optional[str],
+                                  use_codesmithy_make: bool):
+        """Adds a project from the diplodocusdb namespace.
+
+        The install location is derived from the repository name: the '_'
+        separates the namespace from the repository name, so diplodocusdb_core
+        is the core repository of the diplodocusdb namespace and is unzipped at
+        <build_dir>/diplodocusdb/core.
+
+        This layout is the one the projects expect: they refer to their
+        dependencies as $(DIPLODOCUSDB_ROOT)/<repository name>, so
+        DIPLODOCUSDB_ROOT points at the namespace directory and each repository
+        sits directly below it under its own name.
+
+        Parameters
+        ----------
+        makefile_path : str, optional
+            The path of the makefile relative to the root of the extracted
+            repository. None if the project only needs to be downloaded.
+
+        Raises
+        ------
+        RuntimeError
+            If the repository is not a repository of the diplodocusdb
+            namespace.
+        """
+
+        namespace, separator, repository_name = repository.partition("_")
+        if (separator != "_") or (namespace != "diplodocusdb"):
+            exception_text = repository + " is not a repository of the " + \
+                             "diplodocusdb namespace"
+            raise RuntimeError(exception_text)
+        namespace_path = self.config.build_dir + "/diplodocusdb"
+        extract_path = namespace_path + "/" + repository_name
+        if makefile_path is not None:
+            makefile_path = extract_path + "/" + makefile_path
+        self.projects.append(Project(name, repository, "main",
+                                     self.config.downloads_dir,
+                                     extract_path, "DIPLODOCUSDB_ROOT",
+                                     namespace_path,
+                                     makefile_path, use_codesmithy_make))
+
+    def _add_codesmithyide_project(self,
+                                   name: str,
+                                   repository: str,
+                                   makefile_path: Optional[str],
+                                   use_codesmithy_make: bool):
+        """Adds a project from the codesmithyide namespace.
+
+        Unlike the repositories of the other namespaces the ones of the
+        codesmithyide namespace are not prefixed with the name of their
+        namespace, so there is nothing to strip and the repository name is used
+        as-is. The codesmithy repository is unzipped at
+        <build_dir>/codesmithyide/codesmithy.
+
+        This layout is the one the projects expect: they refer to their
+        dependencies as $(CODESMITHYIDE_ROOT)/<repository name>, so
+        CODESMITHYIDE_ROOT points at the namespace directory and each
+        repository sits directly below it under its own name.
+
+        Parameters
+        ----------
+        makefile_path : str, optional
+            The path of the makefile relative to the root of the extracted
+            repository. None if the project only needs to be downloaded.
+
+        Raises
+        ------
+        RuntimeError
+            If the repository is not a repository of the codesmithyide
+            namespace.
+        """
+
+        if "_" in repository:
+            exception_text = repository + " is not a repository of the " + \
+                             "codesmithyide namespace"
+            raise RuntimeError(exception_text)
+        namespace_path = self.config.build_dir + "/codesmithyide"
+        extract_path = namespace_path + "/" + repository
+        if makefile_path is not None:
+            makefile_path = extract_path + "/" + makefile_path
+        self.projects.append(Project(name, repository, "main",
+                                     self.config.downloads_dir,
+                                     extract_path, "CODESMITHYIDE_ROOT",
+                                     namespace_path,
+                                     makefile_path, use_codesmithy_make))
 
     def _init_downloader(self):
         for project in self.projects:

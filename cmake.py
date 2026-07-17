@@ -14,8 +14,10 @@ from build import BuildConfiguration
 class CMake:
     """Wrapper used to invoke CMake."""
 
-    def __init__(self, generator):
+    def __init__(self, generator, architecture, config):
         self.generator = generator
+        self.architecture = architecture
+        self.config = config
 
     def install(self, target: Target, state: State, output: Output):
         """Installs CMake.
@@ -62,7 +64,10 @@ class CMake:
         try:
             with open(logfile, "w") as output_file:
                 cmake_path = previous_working_dir + "/" + self.path
-                generation_args = [cmake_path, "-G", self.generator, "."]
+                generation_args = [cmake_path, "-G", self.generator]
+                if self.architecture:
+                    generation_args.extend(["-A", self.architecture])
+                generation_args.append(".")
                 generation_args.extend(build_configuration.cmake_generation_args)
                 print("    Executing " + " ".join(generation_args))
                 subprocess.check_call(generation_args, stdout=output_file)
@@ -81,25 +86,27 @@ class CMake:
         if target.platform == "Windows":
             architecture_string = ""
             if target.architecture == "64":
-                architecture_string = "-win64-x64"
+                architecture_string = "-windows-x86_64"
             else:
-                architecture_string = "-win32-x86"
-            source_path = "CMake/cmake-3.12.3" + architecture_string + ".zip"
+                architecture_string = "-windows-i386"
+            source_path = "CMake/cmake-4.3.4" + architecture_string + ".zip"
             zip_ref = zipfile.ZipFile(source_path, "r")
-            self.path = "Build/cmake-3.12.3" + architecture_string + \
-                        "/bin/cmake.exe"
+            self.path = self.config.build_dir + "/cmake-4.3.4" + \
+                        architecture_string + "/bin/cmake.exe"
 
             # TODO : the path we delete here doesn't seem right
             shutil.rmtree(self.path, ignore_errors=True)
-            zip_ref.extractall("Build")
+            zip_ref.extractall(self.config.build_dir)
             zip_ref.close()
         elif target.platform == "Linux":
-            download_url = "https://github.com/CodeSmithyIDE/CMake/archive/master.zip"
-            download = Download("CMake", download_url, "Build")
+            download_url = "https://github.com/codesmithyide/CMake/archive/main.zip"
+            download = Download("CMake", download_url,
+                                self.config.downloads_dir, "main",
+                                [self.config.build_dir + "/CMake"])
             download.download(None)
             download.unzip()
             previous_working_dir = os.getcwd()
-            os.chdir("Build/CMake")
+            os.chdir(self.config.build_dir + "/CMake")
             try:
                 try:
                     subprocess.check_call(["chmod", "0774", "bootstrap"])
@@ -110,7 +117,7 @@ class CMake:
                 except subprocess.CalledProcessError:
                     raise RuntimeError("./bootstrap failed.")
                 GNUmake().compile("Makefile", None, None)
-                self.path = "Build/CMake/bin/cmake"
+                self.path = self.config.build_dir + "/CMake/bin/cmake"
             finally:
                 os.chdir(previous_working_dir)
         else:
