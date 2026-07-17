@@ -321,7 +321,7 @@ class Projects:
             "master",
             config.downloads_dir,
             config.build_dir + "/pugixml",
-            "PUGIXML",
+            "PUGIXML_ROOT",
             config.build_dir + "/pugixml",
             None,
             False))
@@ -411,30 +411,22 @@ class Projects:
         self._add_codesmithyide_project(
             "CodeSmithyIDE/VersionControl/Git",
             "version-control",
-            "CodeSmithyIDE/VersionControl",
-            "CODESMITHYIDE",
-            "Makefiles/$(compiler_short_name)/CodeSmithyGit.sln",
+            "git/build-files/$(compiler_short_name)/CodeSmithyGit.sln",
             False)
         self._add_codesmithyide_project(
             "CodeSmithyIDE/BuildToolchains",
             "build-toolchains",
-            "CodeSmithyIDE/BuildToolchains",
-            "CODESMITHYIDE",
-            "Makefiles/$(compiler_short_name)/CodeSmithyBuildToolchains.sln",
+            "build-files/$(compiler_short_name)/CodeSmithyBuildToolchains.sln",
             False)
         self._add_codesmithyide_project(
             "CodeSmithyIDE/CodeSmithy/Core",
             "codesmithy",
-            "CodeSmithyIDE/CodeSmithy",
-            "CODESMITHYIDE",
-            "Makefiles/$(compiler_short_name)/CodeSmithyCore.sln",
+            "core/build-files/$(compiler_short_name)/CodeSmithyCore.sln",
             False)
         self._add_codesmithyide_project(
             "CodeSmithyIDE/CodeSmithy/CLI",
             "codesmithy",
-            "CodeSmithyIDE/CodeSmithy",
-            "CODESMITHYIDE",
-            "Makefiles/$(compiler_short_name)/CodeSmithyCLI.sln",
+            "cli/build-files/$(compiler_short_name)/CodeSmithyCLI.sln",
             False)
         self._add_ishiko_project(
             "Ishiko/TestFramework/Core",
@@ -454,52 +446,42 @@ class Projects:
         self._add_codesmithyide_project(
             "CodeSmithyIDE/CodeSmithy/UICore",
             "codesmithy",
-            "CodeSmithyIDE/CodeSmithy",
-            "CODESMITHYIDE",
-            "Makefiles/$(compiler_short_name)/CodeSmithyUICore.sln",
+            "UICore/Makefiles/$(compiler_short_name)/CodeSmithyUICore.sln",
             True)
         self.projects.append(wxWidgetsProject(config.downloads_dir, config.build_dir))
         self._add_codesmithyide_project(
             "CodeSmithyIDE/CodeSmithy/UIElements",
             "codesmithy",
-            "CodeSmithyIDE/CodeSmithy",
-            "CODESMITHYIDE",
-            "Makefiles/$(compiler_short_name)/CodeSmithyUIElements.sln",
+            "UIElements/Makefiles/$(compiler_short_name)/CodeSmithyUIElements.sln",
             True)
         self._add_codesmithyide_project(
             "CodeSmithyIDE/CodeSmithy/UIImplementation",
             "codesmithy",
-            "CodeSmithyIDE/CodeSmithy",
-            "CODESMITHYIDE",
-            "Makefiles/$(compiler_short_name)/CodeSmithyUIImplementation.sln",
+            "UIImplementation/Makefiles/$(compiler_short_name)/"
+            "CodeSmithyUIImplementation.sln",
             True)
         self._add_codesmithyide_project(
             "CodeSmithyIDE/CodeSmithy/UI",
             "codesmithy",
-            "CodeSmithyIDE/CodeSmithy",
-            "CODESMITHYIDE",
-            "Makefiles/$(compiler_short_name)/CodeSmithy.sln",
+            "UI/Makefiles/$(compiler_short_name)/CodeSmithy.sln",
             True)
         self._add_codesmithyide_project(
             "CodeSmithyIDE/CodeSmithy/Tests/Core",
             "codesmithy",
-            "CodeSmithyIDE/CodeSmithy",
-            "CODESMITHYIDE",
-            "Makefiles/$(compiler_short_name)/CodeSmithyCoreTests.sln",
+            "core/tests/build-files/$(compiler_short_name)/"
+            "CodeSmithyCoreTests.sln",
             True)
         self._add_codesmithyide_project(
             "CodeSmithyIDE/CodeSmithy/Tests/Make",
             "codesmithy",
-            "CodeSmithyIDE/CodeSmithy",
-            "CODESMITHYIDE",
-            "Makefiles/$(compiler_short_name)/CodeSmithyMakeTests.sln",
+            "Tests/Make/Makefiles/$(compiler_short_name)/"
+            "CodeSmithyMakeTests.sln",
             True)
         self._add_codesmithyide_project(
             "CodeSmithyIDE/CodeSmithy/Tests/UICore",
             "codesmithy",
-            "CodeSmithyIDE/CodeSmithy",
-            "CODESMITHYIDE",
-            "Makefiles/$(compiler_short_name)/CodeSmithyUICoreTests.sln",
+            "Tests/UICore/Makefiles/$(compiler_short_name)/"
+            "CodeSmithyUICoreTests.sln",
             True)
         self.tests = []
         self.tests.append(Test("CodeSmithyIDE/CodeSmithy/Tests/Core",
@@ -574,26 +556,6 @@ class Projects:
                     self.get(test.project_name).launch(compiler,
                                                        architecture_dir_name)
                 raise RuntimeError(test.project_name + " tests failed.")
-
-    def _add_project(self,
-                     name: str,
-                     repository: str,
-                     extract_subdir: str,
-                     env_var_name: str,
-                     makefile_path: Optional[str],
-                     use_codesmithy_make: bool):
-        # The archive is unzipped at build_dir/extract_subdir (shared by every
-        # project that comes from the same repository). The makefile still
-        # lives under the project's own name inside that tree.
-        extract_path = self.config.build_dir + "/" + extract_subdir
-        env_var_value = self.config.build_dir + "/" + name.split("/")[0]
-        if makefile_path is not None:
-            makefile_path = self.config.build_dir + "/" + name + "/" + \
-                            makefile_path
-        self.projects.append(Project(name, repository, "main",
-                                     self.config.downloads_dir,
-                                     extract_path, env_var_name, env_var_value,
-                                     makefile_path, use_codesmithy_make))
 
     def _add_ishiko_project(self,
                             name: str,
@@ -688,12 +650,47 @@ class Projects:
     def _add_codesmithyide_project(self,
                                    name: str,
                                    repository: str,
-                                   extract_subdir: str,
-                                   env_var_name: str,
                                    makefile_path: Optional[str],
                                    use_codesmithy_make: bool):
-        self._add_project(name, repository, extract_subdir, env_var_name,
-                          makefile_path, use_codesmithy_make)
+        """Adds a project from the codesmithyide namespace.
+
+        Unlike the repositories of the other namespaces the ones of the
+        codesmithyide namespace are not prefixed with the name of their
+        namespace, so there is nothing to strip and the repository name is used
+        as-is. The codesmithy repository is unzipped at
+        <build_dir>/codesmithyide/codesmithy.
+
+        This layout is the one the projects expect: they refer to their
+        dependencies as $(CODESMITHYIDE_ROOT)/<repository name>, so
+        CODESMITHYIDE_ROOT points at the namespace directory and each
+        repository sits directly below it under its own name.
+
+        Parameters
+        ----------
+        makefile_path : str, optional
+            The path of the makefile relative to the root of the extracted
+            repository. None if the project only needs to be downloaded.
+
+        Raises
+        ------
+        RuntimeError
+            If the repository is not a repository of the codesmithyide
+            namespace.
+        """
+
+        if "_" in repository:
+            exception_text = repository + " is not a repository of the " + \
+                             "codesmithyide namespace"
+            raise RuntimeError(exception_text)
+        namespace_path = self.config.build_dir + "/codesmithyide"
+        extract_path = namespace_path + "/" + repository
+        if makefile_path is not None:
+            makefile_path = extract_path + "/" + makefile_path
+        self.projects.append(Project(name, repository, "main",
+                                     self.config.downloads_dir,
+                                     extract_path, "CODESMITHYIDE_ROOT",
+                                     namespace_path,
+                                     makefile_path, use_codesmithy_make))
 
     def _init_downloader(self):
         for project in self.projects:
