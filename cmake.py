@@ -100,10 +100,11 @@ class CMake:
             zip_ref.close()
         elif target.platform == "Linux":
             download_url = "https://github.com/codesmithyide/CMake/archive/main.zip"
-            download = Download("CMake", download_url, self.config.build_dir,
-                                self.config.downloads_dir, "main")
+            download = Download("CMake", download_url,
+                                self.config.downloads_dir, "main",
+                                [self.config.build_dir + "/CMake"])
             download.download(None)
-            download.unzip(None)
+            download.unzip()
             previous_working_dir = os.getcwd()
             os.chdir(self.config.build_dir + "/CMake")
             try:
