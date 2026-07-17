@@ -174,20 +174,45 @@ class Project:
         return result
 
 
-class fmtProject(Project):
-    """The fmt project.
+class CMakeLibraryProject(Project):
+    """A third-party library built with CMake.
 
-    fmt is built with CMake but it doesn't put the library where the projects
-    that depend on it expect to find it, so a copy is made once the build is
-    done. The headers need no such treatment, the repository already has them
-    in the include directory at its root.
+    These libraries are built with CMake but CMake doesn't put the library
+    where the projects that depend on it expect to find it, so a copy is made
+    once the build is done. The headers need no such treatment, the repository
+    already has them in the include directory at its root.
+
+    The extracted repository is used as-is: it has a CMakeLists.txt at its root
+    and it is where the library is built and installed.
     """
 
-    def __init__(self, download_path, build_dir, target):
-        super().__init__("fmt", "ishiko-cpp_fmt", "master", download_path,
-                         build_dir + "/fmt", "FMT_ROOT",
-                         build_dir + "/fmt",
-                         build_dir + "/fmt/CMakeLists.txt", False)
+    def __init__(self,
+                 name: str,
+                 repository: str,
+                 branch: str,
+                 download_path: str,
+                 build_dir: str,
+                 env_var_name: str,
+                 library_name: str,
+                 target):
+        """
+        Parameters
+        ----------
+        library_name : str
+            The base name of the library as CMake builds it, without the debug
+            suffix, the architecture and the extension. For instance the fmt
+            library is built as fmt.lib (or fmtd.lib in debug builds) so its
+            library name is "fmt".
+        target
+            The target platform and architecture. The architecture appears in
+            the name of the installed library.
+        """
+
+        extract_path = build_dir + "/" + name
+        super().__init__(name, repository, branch, download_path,
+                         extract_path, env_var_name, extract_path,
+                         extract_path + "/CMakeLists.txt", False)
+        self.library_name = library_name
         self.target = target
 
     def build(self, build_tools: BuildTools,
@@ -201,10 +226,10 @@ class fmtProject(Project):
         """Copies the library built by CMake to its expected location.
 
         The build is done in place so CMake puts the library in a directory
-        named after the configuration. The projects that depend on fmt look for
-        it in the lib directory at the root of the repository and under a name
-        that follows the Boost naming convention, so it is copied there and
-        renamed. For instance Debug/fmtd.lib becomes lib/fmt-d-x64.lib.
+        named after the configuration. The projects that depend on the library
+        look for it in the lib directory at the root of the repository and
+        under a name that follows the Boost naming convention, so it is copied
+        there and renamed. For instance Debug/fmtd.lib becomes lib/fmt-d-x64.lib.
 
         Parameters
         ----------
@@ -217,14 +242,14 @@ class fmtProject(Project):
         # CMake appends a "d" to the name of the library in debug builds, the
         # Boost naming convention uses a "-d" suffix instead.
         source_path = self.extract_path + "/" + \
-                      build_configuration.cmake_configuration + "/fmt" + \
-                      ("d" if debug else "") + ".lib"
+                      build_configuration.cmake_configuration + "/" + \
+                      self.library_name + ("d" if debug else "") + ".lib"
         # The Boost naming convention identifies the architecture with a letter
         # for the architecture family followed by the address model, so a 64-bit
         # x86 build is x64 and a 32-bit one is x32.
         architecture_tag = "x" + self.target.architecture
         destination_dir = self.extract_path + "/lib"
-        destination_path = destination_dir + "/fmt" + \
+        destination_path = destination_dir + "/" + self.library_name + \
                            ("-d" if debug else "") + "-" + \
                            architecture_tag + ".lib"
         if not os.path.exists(source_path):
@@ -313,8 +338,10 @@ class Projects:
         self.config = config
         self.downloader = Downloader()
         self.projects = []
-        self.projects.append(fmtProject(config.downloads_dir,
-                                        config.build_dir, target))
+        # fmt is a dependency of all the other projects so it is built first.
+        self.projects.append(CMakeLibraryProject(
+            "fmt", "ishiko-cpp_fmt", "master", config.downloads_dir,
+            config.build_dir, "FMT_ROOT", "fmt", target))
         self.projects.append(Project(
             "pugixml",
             "ishiko-cpp_pugixml",
@@ -325,6 +352,9 @@ class Projects:
             config.build_dir + "/pugixml",
             None,
             False))
+        self.projects.append(CMakeLibraryProject(
+            "yaml-cpp", "ishiko-cpp_yaml-cpp", "master", config.downloads_dir,
+            config.build_dir, "YAML_CPP_ROOT", "yaml-cpp", target))
         self.projects.append(libgit2Project(config.downloads_dir, config.build_dir, target))
         self._add_ishiko_project(
             "Ishiko/BasePlatform",
