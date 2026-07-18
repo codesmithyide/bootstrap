@@ -407,6 +407,16 @@ class Projects:
             "build-files/$(compiler_short_name)/IshikoFileSystem.sln",
             False)
         self._add_ishiko_project(
+            "Ishiko/Configuration",
+            "ishiko-cpp_configuration",
+            "build-files/$(compiler_short_name)/IshikoConfiguration.sln",
+            False)
+        self._add_ishiko_project(
+            "Ishiko/Color",
+            "ishiko-cpp_color",
+            "build-files/$(compiler_short_name)/IshikoColor.sln",
+            False)
+        self._add_ishiko_project(
             "Ishiko/Terminal",
             "ishiko-cpp_terminal",
             "build-files/$(compiler_short_name)/IshikoTerminal.sln",
@@ -437,6 +447,11 @@ class Projects:
             "diplodocusdb_embedded-document-db",
             "database/build-files/$(compiler_short_name)/"
             "DiplodocusEmbeddedDocumentDB.sln",
+            False)
+        self._add_codesmithyide_project(
+            "CodeSmithyIDE/Nuime/CLI",
+            "nuime",
+            "cli/build-files/$(compiler_short_name)/NuimeCLI.sln",
             False)
         self._add_codesmithyide_project(
             "CodeSmithyIDE/VersionControl/Git",
