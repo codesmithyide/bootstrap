@@ -426,6 +426,11 @@ class Projects:
             "ishiko-cpp_workflows",
             "build-files/$(compiler_short_name)/IshikoWorkflows.sln",
             False)
+        self._add_ishiko_project(
+            "Ishiko/UUIDs",
+            "ishiko-cpp_uuids",
+            "build-files/$(compiler_short_name)/IshikoUUIDs.sln",
+            False)
         self._add_diplodocusdb_project(
             "DiplodocusDB/Core",
             "diplodocusdb_core",
@@ -449,9 +454,14 @@ class Projects:
             "DiplodocusEmbeddedDocumentDB.sln",
             False)
         self._add_codesmithyide_project(
-            "CodeSmithyIDE/Nuime/CLI",
-            "nuime",
-            "cli/build-files/$(compiler_short_name)/NuimeCLI.sln",
+            "CodeSmithyIDE/BuildToolchains",
+            "build-toolchains",
+            "build-files/$(compiler_short_name)/CodeSmithyBuildToolchains.sln",
+            False)
+        self._add_codesmithyide_project(
+            "CodeSmithyIDE/BuildFiles",
+            "build-files",
+            "build-files/$(compiler_short_name)/CodeSmithyBuildFiles.sln",
             False)
         self._add_codesmithyide_project(
             "CodeSmithyIDE/VersionControl/Git",
@@ -459,9 +469,14 @@ class Projects:
             "git/build-files/$(compiler_short_name)/CodeSmithyGit.sln",
             False)
         self._add_codesmithyide_project(
-            "CodeSmithyIDE/BuildToolchains",
-            "build-toolchains",
-            "build-files/$(compiler_short_name)/CodeSmithyBuildToolchains.sln",
+            "CodeSmithyIDE/Nuime/Library",
+            "nuime",
+            "library/build-files/$(compiler_short_name)/Nuime.sln",
+            False)
+        self._add_codesmithyide_project(
+            "CodeSmithyIDE/Nuime/CLI",
+            "nuime",
+            "cli/build-files/$(compiler_short_name)/nuime_cli.sln",
             False)
         self._add_codesmithyide_project(
             "CodeSmithyIDE/CodeSmithy/Core",

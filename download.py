@@ -60,12 +60,28 @@ class Download:
                   flush=True)
         self.unzipped = True
 
-    def __eq__(self, other):
-        if not isinstance(other, Download):
-            return False
+    def add_destination_dirs(self, destination_dirs):
+        """Adds install locations to this download, ignoring duplicates.
+
+        A single archive can be requested by several projects with different
+        install locations. It is still downloaded once, but must be installed
+        to every requested destination, so the destination lists are unioned.
+        """
+
+        for destination_dir in destination_dirs:
+            if destination_dir not in self.destination_dirs:
+                self.destination_dirs.append(destination_dir)
+
+    def refers_to_same_archive(self, other):
+        """True if the two downloads fetch the same archive.
+
+        The install locations (destination_dirs) are excluded on purpose: the
+        same archive may be installed to several destinations, which
+        Downloader.merge unions rather than treating as a difference.
+        """
+
         return ((self.name == other.name) and (self.url == other.url) and
-                (self.download_path == other.download_path) and
-                (self.destination_dirs == other.destination_dirs))
+                (self.download_path == other.download_path))
 
 
 class Downloader:
@@ -77,18 +93,44 @@ class Downloader:
             already_present = False
             for download in self.downloads:
                 if download.url == other_download.url:
-                    if download != other_download:
+                    # Same archive requested by more than one project. It is
+                    # downloaded once and installed to every requested
+                    # destination, so merge the destination lists rather than
+                    # treating differing destinations as a conflict. Any other
+                    # difference (name or download path) means the same URL was
+                    # defined inconsistently and remains an error.
+                    if not download.refers_to_same_archive(other_download):
                         exception_text = "Conflicting values for " + \
                                          "download " + download.name
                         raise RuntimeError(exception_text)
+                    download.add_destination_dirs(
+                        other_download.destination_dirs)
                     already_present = True
                     break
             if not already_present:
                 self.downloads.append(other_download)
 
+    @staticmethod
+    def _substep_label(index):
+        """Returns a spreadsheet-style label: a, b, ..., z, aa, ab, ...
+
+        Generating the download substep labels this way keeps them correct no
+        matter how many downloads there are. The previous implementation zipped
+        the downloads against range(ord("a"), ord("z")), which silently dropped
+        every download past the 25th (they were never fetched, then failed when
+        the build tried to unzip them).
+        """
+
+        label = ""
+        index += 1
+        while index > 0:
+            index, remainder = divmod(index - 1, 26)
+            label = chr(ord("a") + remainder) + label
+        return label
+
     def download(self):
-        for download, i in zip(self.downloads, range(ord("a"), ord("z"))):
-            download.download(chr(i))
+        for i, download in enumerate(self.downloads):
+            download.download(self._substep_label(i))
 
     def unzip(self, name):
         for download in self.downloads:
