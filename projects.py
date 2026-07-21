@@ -471,7 +471,7 @@ class Projects:
         self._add_codesmithyide_project(
             "CodeSmithyIDE/Nuime/Library",
             "nuime",
-            "library/build-files/$(compiler_short_name)/Nuime.sln",
+            "library/build-files/$(compiler_short_name)/nuime_lib.sln",
             False)
         self._add_codesmithyide_project(
             "CodeSmithyIDE/Nuime/CLI",
