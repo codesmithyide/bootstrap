@@ -110,9 +110,27 @@ class Downloader:
             if not already_present:
                 self.downloads.append(other_download)
 
+    @staticmethod
+    def _substep_label(index):
+        """Returns a spreadsheet-style label: a, b, ..., z, aa, ab, ...
+
+        Generating the download substep labels this way keeps them correct no
+        matter how many downloads there are. The previous implementation zipped
+        the downloads against range(ord("a"), ord("z")), which silently dropped
+        every download past the 25th (they were never fetched, then failed when
+        the build tried to unzip them).
+        """
+
+        label = ""
+        index += 1
+        while index > 0:
+            index, remainder = divmod(index - 1, 26)
+            label = chr(ord("a") + remainder) + label
+        return label
+
     def download(self):
-        for download, i in zip(self.downloads, range(ord("a"), ord("z"))):
-            download.download(chr(i))
+        for i, download in enumerate(self.downloads):
+            download.download(self._substep_label(i))
 
     def unzip(self, name):
         for download in self.downloads:
